@@ -67,3 +67,12 @@ docker-compose.override.yml
 *.key
 *.crt
 .env.production
+
+# .github
+.github/**/*.key
+.github/**/*.pem
+.github/secrets/
+
+# .devcontainer
+.devcontainer/devcontainer.local.json
+.devcontainer/*.env
