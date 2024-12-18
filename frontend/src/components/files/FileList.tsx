@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux.ts';
 import { fetchFiles, deleteFile } from '../../store/slices/fileSlice.ts';
-import { Download, Share2, Trash2, Search, Loader, FileIcon } from 'lucide-react';
+import { Share2, Trash2, Search, Loader, FileIcon } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import FileDownload from './FileDownload.tsx';
 import ShareModal from './ShareModal.tsx';

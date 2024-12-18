@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux.ts';
 import { login, verifyMFA } from '../../store/slices/authSlice.ts';
-import { Loader } from 'lucide-react';
+import { Loader, Lock } from 'lucide-react';
+import { Header } from '../layout/Header.tsx';
 
 const Login = () => {
     const dispatch = useAppDispatch();
@@ -96,86 +97,87 @@ const Login = () => {
 
     // Main login form
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-md w-full space-y-8">
-                <div>
-                    <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-                        Sign in to your account
-                    </h2>
-                    <p className="mt-2 text-center text-sm text-gray-600">
-                        Or{' '}
-                        <Link 
-                            to="/register" 
-                            className="font-medium text-indigo-600 hover:text-indigo-500"
-                        >
-                            create a new account
-                        </Link>
-                    </p>
-                </div>
-                {registrationMessage && (
-                    <div className="rounded-md bg-green-50 p-4">
-                        <div className="flex">
-                            <div className="flex-shrink-0">
-                                {/* You can add a checkmark icon here if you'd like */}
-                            </div>
-                            <div className="ml-3">
-                                <p className="text-sm font-medium text-green-800">
-                                    {registrationMessage}
-                                </p>
-                            </div>
-                        </div>
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100 p-4 sm:p-8">
+            <div className="w-full max-w-[400px] space-y-6 gap-4">
+                <Header />
+                <div className="card">
+                    <div className="text-center mb-6">
+                        <h2 className="text-2xl font-bold">Sign In</h2>
+                        <p className="text-sm text-gray-600 mt-1">
+                            Enter your credentials to access your account
+                        </p>
                     </div>
-                )}
-                <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-                    <div className="rounded-md shadow-sm -space-y-px">
-                        <div>
+
+                    <form onSubmit={handleLogin} className="space-y-4">
+                        {registrationMessage && (
+                            <div className="success-message">{registrationMessage}</div>
+                        )}
+
+                        <div className="space-y-4">
                             <input
                                 id="username"
                                 name="username"
                                 type="text"
+                                placeholder="Username"
                                 autoComplete="username"
                                 required
-                                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                                placeholder="Username"
                                 value={credentials.username}
                                 onChange={handleChange}
+                                className={`input-field ${error ? 'input-error' : ''}`}
                             />
-                        </div>
-                        <div>
+
                             <input
                                 id="password"
                                 name="password"
                                 type="password"
+                                placeholder="Password"
                                 autoComplete="current-password"
                                 required
-                                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                                placeholder="Password"
                                 value={credentials.password}
                                 onChange={handleChange}
+                                className={`input-field ${error ? 'input-error' : ''}`}
                             />
                         </div>
-                    </div>
 
-                    {error && (
-                        <div className="text-sm text-red-600">
-                            {error}
+                        {error && (
+                        <div className="error-message">
+                            <Lock className="w-4 h-4" />
+                            <span>{error}</span>
                         </div>
-                    )}
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                        {loading ? (
-                            <Loader className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
-                        ) : (
-                            'Sign in'
                         )}
-                    </button>
-                </form>
+
+                        <button
+                            type="submit"
+                            className="btn-primary w-full flex items-center justify-center"
+                            disabled={loading}
+                            >
+                            {loading ? (
+                                <>
+                                <Loader className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                                Signing In...
+                                </>
+                            ) : (
+                                'Sign In'
+                            )}
+                        </button>
+                    </form>
+
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                        <div className="text-center text-sm text-gray-600 mb-4">
+                            New to FortiFile?
+                        </div>
+                        <Link
+                            to="/register"
+                            className="block text-center px-4 py-2 border border-gray-300 rounded-md
+                                        text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+                            >
+                            Create an account
+                        </Link>
+                    </div>
+                </div>
             </div>
         </div>
+        
     );
 };
 

@@ -4,9 +4,11 @@ import { useAppSelector } from './hooks/redux.ts';
 import Dashboard from './pages/Dashboard.tsx';
 import Login from './components/auth/Login.tsx';
 import Register from './components/auth/Register.tsx';
+import AdminDashboard from './components/admin/AdminDashboard.tsx';
+import SecuritySettings from './components/security/securitySettings.tsx';
 
 const App = () => {
-  const { isAuthenticated } = useAppSelector(state => state.auth);
+  const { isAuthenticated, user } = useAppSelector(state => state.auth);
 
   return (
     <Router>
@@ -21,7 +23,25 @@ const App = () => {
         />
         <Route 
           path="/dashboard" 
-          element={!isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} 
+          element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} 
+        />
+        <Route 
+            path="/security" 
+            element={
+                isAuthenticated ? (
+                    <SecuritySettings />
+                ) : (
+                    <Navigate to="/login" replace />
+                )
+            } 
+        />
+        <Route 
+            path="/admin" 
+            element={
+                isAuthenticated && user?.role === 'ADMIN' 
+                    ? <AdminDashboard /> 
+                    : <Navigate to="/dashboard" />
+            } 
         />
         <Route 
           path="/" 

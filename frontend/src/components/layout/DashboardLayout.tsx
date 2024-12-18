@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAppSelector } from '../../hooks/redux.ts';
-import { FolderIcon, ShareIcon, UsersIcon, LogOutIcon } from 'lucide-react';
+import { FolderIcon, ShareIcon, UsersIcon, LogOutIcon, Shield } from 'lucide-react';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -12,6 +12,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const navigation = [
     { name: 'My Files', icon: FolderIcon, href: '/dashboard' },
     { name: 'Shared Files', icon: ShareIcon, href: '/shared' },
+    { name: 'Security Settings', icon: Shield, href: '/security' }, 
     { name: 'Users', icon: UsersIcon, href: '/users', adminOnly: true },
   ];
 

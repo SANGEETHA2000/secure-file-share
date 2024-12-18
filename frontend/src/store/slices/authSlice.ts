@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
+import api from '../../api/axios.ts';
 
 interface AuthState {
     user: any | null;        // Stores user information when logged in
@@ -9,6 +9,7 @@ interface AuthState {
     tempUserId: string | null; // Temporarily stores user ID during MFA process
     loading: boolean;        // Tracks if an auth operation is in progress
     error: string | null;    // Stores any error messages
+    mfa_enabled: boolean;    // Tracks if MFA is enabled
 }
 
 // Set up the initial state
@@ -19,7 +20,8 @@ const initialState: AuthState = {
     requiresMFA: false,
     tempUserId: null,
     loading: false,
-    error: null
+    error: null,
+    mfa_enabled: false
 };
 
 // Create an async action for logging in
@@ -27,7 +29,7 @@ export const login = createAsyncThunk(
     'auth/login',
     async (credentials: { username: string; password: string }, { rejectWithValue }) => {
         try {
-            const response = await axios.post('/api/v1/auth/login/', credentials);
+            const response = await api.post('/auth/login/', credentials);
             
             // Handle MFA requirement
             if (response.data.require_mfa) {
@@ -54,7 +56,7 @@ export const verifyMFA = createAsyncThunk(
     'auth/verifyMFA',
     async ({ userId, token }: { userId: string; token: string }, { rejectWithValue }) => {
         try {
-            const response = await axios.post('/api/v1/auth/verify-mfa/', {
+            const response = await api.post('/auth/verify-mfa/', {
                 user_id: userId,
                 token
             });
@@ -78,7 +80,7 @@ export const fetchUserProfile = createAsyncThunk(
             // Get the current state to access the token
             const { auth } = getState() as { auth: AuthState };
             
-            const response = await axios.get('/api/v1/users/me/', {
+            const response = await api.get('/users/me/', {
                 headers: {
                     Authorization: `Bearer ${auth.token}`
                 }
@@ -101,17 +103,38 @@ export const register = createAsyncThunk(
         last_name: string;
     }, { rejectWithValue }) => {
         try {
-            const response = await axios.post('/api/v1/users/', userData);
-            
-            // After successful registration, we can either:
-            // 1. Automatically log the user in
-            // 2. Or redirect them to the login page
+            const response = await api.post('/users/', userData);
             return response.data;
         } catch (error: any) {
             return rejectWithValue(
                 error.response?.data?.detail || 
                 'Registration failed. Please try again.'
             );
+        }
+    }
+);
+
+export const enableMFA = createAsyncThunk(
+    'auth/enableMFA',
+    async (_, { rejectWithValue }) => {
+        try {
+            const response = await api.post('/users/enable-mfa/');
+            return response.data;
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.detail || 'Failed to enable MFA');
+        }
+    }
+);
+
+// For verifying during MFA setup
+export const verifyMFASetup = createAsyncThunk(
+    'auth/verifyMFASetup',
+    async ({ token }: { token: string }, { rejectWithValue }) => {
+        try {
+            const response = await api.post('/users/verify-mfa-setup/', { token });
+            return response.data;
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.detail || 'MFA setup verification failed');
         }
     }
 );
@@ -176,6 +199,32 @@ const authSlice = createSlice({
                 // We don't set isAuthenticated here since we'll require them to login
             })
             .addCase(register.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload as string;
+            })
+            
+            .addCase(enableMFA.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(enableMFA.fulfilled, (state, action) => {
+                state.loading = false;
+                // We don't set mfa_enabled yet because it needs verification
+            })
+            .addCase(enableMFA.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload as string;
+            })
+
+            .addCase(verifyMFASetup.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(verifyMFASetup.fulfilled, (state) => {
+                state.loading = false;
+                state.mfa_enabled = true;
+            })
+            .addCase(verifyMFASetup.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload as string;
             });

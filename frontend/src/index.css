@@ -14,4 +14,28 @@
            focus:ring-blue-500 focus:ring-offset-2 
            transition-colors duration-200;
   }
+
+  .input-field {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-md
+           focus:outline-none focus:ring-2 focus:ring-blue-500
+           placeholder-gray-400 text-gray-900;
+  }
+
+  .input-error {
+    @apply border-red-500 focus:ring-red-500;
+  }
+
+  .link {
+    @apply text-blue-600 hover:text-blue-700 hover:underline
+           transition-colors duration-200;
+  }
+
+  .error-message {
+    @apply flex items-center text-sm text-red-600 gap-2 mt-1;
+  }
+
+  .success-message {
+    @apply p-3 rounded-lg bg-green-50 border border-green-200
+           text-sm text-green-800;
+  }
 }

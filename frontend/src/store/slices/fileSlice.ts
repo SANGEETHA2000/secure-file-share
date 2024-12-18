@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
+import api from '../../api/axios.ts';
 
 // Think of a File interface as a blueprint for what information we store about each file
 interface File {
@@ -62,7 +62,7 @@ export const uploadFile = createAsyncThunk(
             const formData = new FormData();
             formData.append('file', file);
 
-            const response = await axios.post('/api/v1/files/', formData, {
+            const response = await api.post('/files/', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 },
@@ -87,7 +87,7 @@ export const fetchFiles = createAsyncThunk(
     'files/fetchAll',
     async (_, { rejectWithValue }) => {
         try {
-            const response = await axios.get('/api/v1/files/');
+            const response = await api.get('/files/');
             return response.data;
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.detail || 'Failed to fetch files');
@@ -100,7 +100,7 @@ export const deleteFile = createAsyncThunk(
     'files/delete',
     async (fileId: string, { rejectWithValue }) => {
         try {
-            await axios.delete(`/api/v1/files/${fileId}/`);
+            await api.delete(`/files/${fileId}/`);
             return fileId;
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.detail || 'Failed to delete file');
@@ -113,14 +113,15 @@ export const downloadFile = createAsyncThunk(
     'files/download',
     async (fileId: string, { rejectWithValue }) => {
         try {
-            // We use axios with responseType blob to handle binary data
-            const response = await axios.get(`/api/v1/files/${fileId}/download/`, {
+            // We use axios api with responseType blob to handle binary data
+            const response = await api.get(`/files/${fileId}/download/`, {
                 responseType: 'blob',
                 // Track download progress if we want to show it
                 onDownloadProgress: (progressEvent) => {
                     const progress = Math.round(
                         (progressEvent.loaded * 100) / (progressEvent.total || 100)
                     );
+                    console.log(progress);
                     // We could dispatch an action here to update progress in the UI
                 }
             });
@@ -161,7 +162,7 @@ export const createShareLink = createAsyncThunk(
     'files/createShare',
     async (settings: ShareSettings, { rejectWithValue }) => {
         try {
-            const response = await axios.post('/api/v1/shares/', settings);
+            const response = await api.post('/shares/', settings);
             return response.data;
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.detail || 'Failed to create share link');
@@ -174,7 +175,7 @@ export const fetchFileShares = createAsyncThunk(
     'files/fetchShares',
     async (fileId: string, { rejectWithValue }) => {
         try {
-            const response = await axios.get(`/api/v1/files/${fileId}/shares/`);
+            const response = await api.get(`/files/${fileId}/shares/`);
             return response.data;
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.detail || 'Failed to fetch shares');
@@ -187,7 +188,7 @@ export const removeShare = createAsyncThunk(
     'files/removeShare',
     async (shareId: string, { rejectWithValue }) => {
         try {
-            await axios.delete(`/api/v1/shares/${shareId}/`);
+            await api.delete(`/shares/${shareId}/`);
             return shareId;
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.detail || 'Failed to remove share');

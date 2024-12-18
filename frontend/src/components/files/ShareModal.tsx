@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux.ts';
 import { createShareLink, fetchFileShares, removeShare } from '../../store/slices/fileSlice.ts';
-import { X, Copy, Loader, Link, Mail, Trash2 } from 'lucide-react';
+import { X, Copy, Link, Mail, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 interface ShareModalProps {
