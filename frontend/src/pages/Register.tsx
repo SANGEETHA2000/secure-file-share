@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAppDispatch, useAppSelector } from '../../hooks/redux.ts';
-import { register } from '../../store/slices/authSlice.ts';
+import { useAppDispatch, useAppSelector } from '../hooks/redux.ts';
+import { register } from '../store/slices/authSlice.ts';
 import { Loader, Lock, UserPlus } from 'lucide-react';
-import { LogoLayout } from '../layout/LogoLayout.tsx';
+import { LogoLayout } from '../components/layout/LogoLayout.tsx';
 
 const Register = () => {
     const dispatch = useAppDispatch();

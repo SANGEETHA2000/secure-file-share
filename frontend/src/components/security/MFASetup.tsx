@@ -22,7 +22,11 @@ const MFASetup: React.FC<MFASetupProps> = ({ onClose }) => {
     const handleStartSetup = async () => {
         try {
             const result = await dispatch(enableMFA()).unwrap();
-            setQrCode(result.provisioning_uri);
+            const encodedSecret = encodeURIComponent(result.secret);
+            const provisioningUri = result.provisioning_uri //`otpauth://totp/Secure%20File%20Share:${encodedSecret}?secret=${encodedSecret}&issuer=Secure%20File%20Share`;
+            // const provisioningUri = 'otpauth://totp/Secure%20File%20Share:sangeetha2000.vd%40gmail.com:?secret=L36GQTG4BEVE55OTASPSICIROPAUQSVH&issuer=Secure%20File%20Share'
+            console.log(provisioningUri)
+            setQrCode(provisioningUri);
             setSecret(result.secret);
             setStep('scan');
         } catch (error) {

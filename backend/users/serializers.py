@@ -57,5 +57,5 @@ class UserProfileSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role', 'mfa_enabled')
         read_only_fields = ('role',)  # Role can only be changed by admin

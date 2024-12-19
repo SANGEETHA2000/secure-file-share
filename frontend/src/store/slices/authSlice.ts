@@ -108,6 +108,7 @@ export const fetchUserProfile = createAsyncThunk(
     async (_, { rejectWithValue }) => {
         try {            
             const response = await api.get('/users/me/');
+            localStorage.setItem('user', JSON.stringify(response.data));
             return response.data;
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.detail || 'Failed to fetch profile');
@@ -141,7 +142,8 @@ export const enableMFA = createAsyncThunk(
     'auth/enableMFA',
     async (_, { rejectWithValue }) => {
         try {
-            const response = await api.post('/users/enable-mfa/');
+            const response = await api.post('/users/enable_mfa/');
+            console.log(response)
             return response.data;
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.detail || 'Failed to enable MFA');
@@ -154,7 +156,7 @@ export const verifyMFASetup = createAsyncThunk(
     'auth/verifyMFASetup',
     async ({ token }: { token: string }, { rejectWithValue }) => {
         try {
-            const response = await api.post('/users/verify-mfa-setup/', { token });
+            const response = await api.post('/users/verify_mfa_setup/', { token });
             return response.data;
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.detail || 'MFA setup verification failed');
@@ -173,9 +175,7 @@ const authSlice = createSlice({
             state.user = null;
             state.token = null;
             state.isAuthenticated = false;
-            state.requiresMFA = false;
             state.tempUserId = null;
-            state.mfa_enabled = false;
             localStorage.removeItem('user');
         },
         // Add other synchronous actions here if needed

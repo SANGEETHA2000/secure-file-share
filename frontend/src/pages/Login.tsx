@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { useAppDispatch, useAppSelector } from '../../hooks/redux.ts';
-import { login, verifyMFA } from '../../store/slices/authSlice.ts';
+import { useAppDispatch, useAppSelector } from '../hooks/redux.ts';
+import { login, verifyMFA } from '../store/slices/authSlice.ts';
 import { Loader, Lock } from 'lucide-react';
-import { LogoLayout } from '../layout/LogoLayout.tsx';
+import { LogoLayout } from '../components/layout/LogoLayout.tsx';
 
 const Login = () => {
     const dispatch = useAppDispatch();
@@ -51,45 +51,48 @@ const Login = () => {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
                 <div className="max-w-md w-full space-y-8">
-                    <div>
-                        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-                            Enter Authentication Code
-                        </h2>
-                        <p className="mt-2 text-center text-sm text-gray-600">
-                            Please enter the 6-digit code from your authenticator app
-                        </p>
-                    </div>
-                    <form className="mt-8 space-y-6" onSubmit={handleMFASubmit}>
-                        <div className="rounded-md shadow-sm -space-y-px">
-                            <input
-                                type="text"
-                                value={mfaToken}
-                                onChange={(e) => setMfaToken(e.target.value)}
-                                placeholder="000000"
-                                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                                maxLength={6}
-                                required
-                            />
+                    <LogoLayout />
+                    <div className="card">
+                        <div>
+                            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                                Enter Authentication Code
+                            </h2>
+                            <p className="mt-2 text-center text-sm text-gray-600">
+                                Please enter the 6-digit code from your authenticator app
+                            </p>
                         </div>
-
-                        {error && (
-                            <div className="text-sm text-red-600">
-                                {error}
+                        <form className="mt-8 space-y-6" onSubmit={handleMFASubmit}>
+                            <div className="rounded-md shadow-sm -space-y-px">
+                                <input
+                                    type="text"
+                                    value={mfaToken}
+                                    onChange={(e) => setMfaToken(e.target.value)}
+                                    placeholder="000000"
+                                    className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                                    maxLength={6}
+                                    required
+                                />
                             </div>
-                        )}
 
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                        >
-                            {loading ? (
-                                <Loader className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
-                            ) : (
-                                'Verify Code'
+                            {error && (
+                                <div className="text-sm text-red-600">
+                                    {error}
+                                </div>
                             )}
-                        </button>
-                    </form>
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                            >
+                                {loading ? (
+                                    <Loader className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
+                                ) : (
+                                    'Verify Code'
+                                )}
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
         );

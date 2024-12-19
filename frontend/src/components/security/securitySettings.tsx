@@ -30,7 +30,7 @@ const SecuritySettings = () => {
                 <div className="bg-white shadow rounded-lg">
                     <div className="p-6">
                         <div className="flex items-start">
-                            <div className="flex-shrink-0">
+                            <div className="flex-shrink-0 pt-1">
                                 <Shield className={`h-6 w-6 ${user?.mfa_enabled ? 'text-green-500' : 'text-gray-400'}`} />
                             </div>
                             <div className="ml-4 flex-1">
@@ -44,7 +44,7 @@ const SecuritySettings = () => {
                                 <div className="mt-4">
                                     {user?.mfa_enabled ? (
                                         <div className="flex items-center space-x-4">
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                                 Enabled
                                             </span>
                                             <button
@@ -79,7 +79,7 @@ const SecuritySettings = () => {
                     <div className="p-6">
                         <div className="flex items-start">
                             <div className="flex-shrink-0">
-                                <Lock className="h-6 w-6 text-gray-400" />
+                                <Lock className="h-6 w-6 pt-1 text-gray-400" />
                             </div>
                             <div className="ml-4 flex-1">
                                 <h3 className="text-lg font-medium text-gray-900">

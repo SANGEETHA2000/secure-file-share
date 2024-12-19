@@ -1,5 +1,6 @@
 from rest_framework import status, views
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
@@ -33,6 +34,8 @@ class VerifyMFAView(views.APIView):
     """
     Verify MFA token and provide JWT tokens upon successful verification.
     """
+    permission_classes = [AllowAny]
+
     def post(self, request):
         user_id = request.data.get('user_id')
         token = request.data.get('token')

@@ -42,9 +42,10 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def enable_mfa(self, request):
         """
-        Enable MFA for the current user.
+        Initialize MFA setup by generating a secret key and QR code URI
         """
-        if request.user.mfa_enabled:
+        user = request.user
+        if user.mfa_enabled:
             return Response(
                 {'detail': 'MFA is already enabled'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -52,15 +53,17 @@ class UserViewSet(viewsets.ModelViewSet):
 
         # Generate a new secret key for TOTP
         secret = pyotp.random_base32()
-        request.user.mfa_secret = secret
-        request.user.save()
-
-        # Generate the provisioning URI for QR code
         totp = pyotp.TOTP(secret)
+        
+        # Generate the provisioning URI for QR code
         provisioning_uri = totp.provisioning_uri(
-            request.user.email,
+            user.email,
             issuer_name="Secure File Share"
         )
+
+        # Store the secret temporarily (you might want to use cache or session)
+        user.mfa_secret = secret
+        user.save()
 
         return Response({
             'secret': secret,
@@ -68,9 +71,9 @@ class UserViewSet(viewsets.ModelViewSet):
         })
 
     @action(detail=False, methods=['post'])
-    def verify_mfa(self, request):
+    def verify_mfa_setup(self, request):
         """
-        Verify MFA token and enable MFA if correct.
+        Verify the MFA token and enable MFA if correct
         """
         token = request.data.get('token')
         if not token:
@@ -79,10 +82,17 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        totp = pyotp.TOTP(request.user.mfa_secret)
+        user = request.user
+        if not user.mfa_secret:
+            return Response(
+                {'detail': 'MFA setup not initiated'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        totp = pyotp.TOTP(user.mfa_secret)
         if totp.verify(token):
-            request.user.mfa_enabled = True
-            request.user.save()
+            user.mfa_enabled = True
+            user.save()
             return Response({'detail': 'MFA enabled successfully'})
         
         return Response(
