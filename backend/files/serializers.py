@@ -15,9 +15,34 @@ class FileSerializer(serializers.ModelSerializer):
     class Meta:
         model = File
         fields = ('id', 'name', 'original_name', 'mime_type', 'size', 
-                 'owner', 'uploaded_at', 'file', 'download_url', 'owner_name')
-        read_only_fields = ('id', 'name', 'mime_type', 'size', 'owner', 
-                          'uploaded_at', 'download_url', 'owner_name')
+                 'owner', 'uploaded_at', 'updated_at', 'file', 'download_url', 'owner_name',
+                 'encryption_key_id')
+        read_only_fields = ('id', 'name', 'original_name', 'mime_type', 'size',
+                          'owner', 'uploaded_at', 'updated_at', 'encryption_key_id')
+
+    def create(self, validated_data):
+        # Extract the file from validated data
+        upload_file = validated_data.pop('file')
+        
+        # Create the file instance with the remaining data
+        file_instance = File.objects.create(
+            name=upload_file.name,  # You might want to generate a unique name here
+            original_name=upload_file.name,
+            mime_type=upload_file.content_type,
+            size=upload_file.size,
+            owner=self.context['request'].user,
+            # Add any encryption handling here
+            encryption_key_id='temp-key'  # Replace with actual encryption key handling
+        )
+
+        # Handle the actual file storage
+        # You might want to add your encryption logic here
+        file_path = f'encrypted_files/{file_instance.name}'
+        with open(file_path, 'wb+') as destination:
+            for chunk in upload_file.chunks():
+                destination.write(chunk)
+
+        return file_instance
 
     def get_download_url(self, obj):
         """

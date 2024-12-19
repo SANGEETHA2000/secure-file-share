@@ -3,11 +3,21 @@ import { useAppDispatch, useAppSelector } from '../../hooks/redux.ts';
 import { uploadFile } from '../../store/slices/fileSlice.ts';
 import { UploadCloud, X, Loader } from 'lucide-react';
 
-const FileUpload: React.FC = () => {
+interface FileUploadProps {
+    onFileSelect: (file: File | null) => void;
+}
+
+const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
     const dispatch = useAppDispatch();
     const { loading, uploadProgress } = useAppSelector(state => state.files);
     const [dragActive, setDragActive] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+    // Update the file selection handlers to notify parent component
+    const handleFileSelect = (file: File | null) => {
+        setSelectedFile(file);
+        onFileSelect(file);  // Notify parent component
+    };
 
     // Handle the actual file upload
     const handleFileUpload = useCallback(async (file: File) => {
@@ -27,10 +37,9 @@ const FileUpload: React.FC = () => {
 
         const files = Array.from(e.dataTransfer.files);
         if (files.length > 0) {
-            setSelectedFile(files[0]);
-            handleFileUpload(files[0]);
+            handleFileSelect(files[0]);
         }
-    }, [handleFileUpload]);
+    }, [onFileSelect]);
 
     // Handle drag events to show visual feedback
     const handleDrag = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -47,14 +56,13 @@ const FileUpload: React.FC = () => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         e.preventDefault();
         if (e.target.files && e.target.files[0]) {
-            setSelectedFile(e.target.files[0]);
-            handleFileUpload(e.target.files[0]);
+            handleFileSelect(e.target.files[0]);
         }
     };
 
     // Clear selected file
     const handleClear = () => {
-        setSelectedFile(null);
+        handleFileSelect(null);
     };
 
     return (

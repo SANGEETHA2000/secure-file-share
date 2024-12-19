@@ -64,7 +64,6 @@ export const login = createAsyncThunk(
             try {
                 const userResponse = await api.get('/users/me/');
                 const userData = userResponse.data;
-                console.log(userData)
                 localStorage.setItem('user', JSON.stringify(userData));
                 return {
                     token: response.data.access,

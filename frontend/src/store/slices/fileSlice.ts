@@ -61,6 +61,7 @@ export const uploadFile = createAsyncThunk(
             // Create a FormData object to send the file
             const formData = new FormData();
             formData.append('file', file);
+            formData.append('original_name', file.name); 
 
             const response = await api.post('/files/', formData, {
                 headers: {
