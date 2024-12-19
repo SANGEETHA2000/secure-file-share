@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux.ts';
 import { login, verifyMFA } from '../../store/slices/authSlice.ts';
 import { Loader, Lock } from 'lucide-react';
-import { Header } from '../layout/Header.tsx';
+import { LogoLayout } from '../layout/LogoLayout.tsx';
 
 const Login = () => {
     const dispatch = useAppDispatch();
@@ -98,8 +98,8 @@ const Login = () => {
     // Main login form
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100 p-4 sm:p-8">
-            <div className="w-full max-w-[400px] space-y-6 gap-4">
-                <Header />
+            <div className="w-full max-w-[400px] space-y-6 gap-6 flex flex-col items-center justify-center">
+                <LogoLayout />
                 <div className="card">
                     <div className="text-center mb-6">
                         <h2 className="text-2xl font-bold">Sign In</h2>
@@ -165,14 +165,14 @@ const Login = () => {
                     <div className="mt-6 pt-6 border-t border-gray-200">
                         <div className="text-center text-sm text-gray-600 mb-4">
                             New to FortiFile?
+                            <Link
+                                to="/register"
+                                className="text-center px-1 py-2 rounded-md
+                                            text-brand-primary hover:text-brand-dark transition-colors duration-200"
+                                >
+                                Click here to create an account
+                            </Link>
                         </div>
-                        <Link
-                            to="/register"
-                            className="block text-center px-4 py-2 border border-gray-300 rounded-md
-                                        text-gray-700 hover:bg-gray-50 transition-colors duration-200"
-                            >
-                            Create an account
-                        </Link>
                     </div>
                 </div>
             </div>

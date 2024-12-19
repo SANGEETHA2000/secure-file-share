@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAppSelector } from '../../hooks/redux.ts';
 import { Shield, Lock, QrCode } from 'lucide-react';
 import MFASetup from './MFASetup.tsx';
+import DashboardLayout from '../layout/DashboardLayout.tsx';
 
 // The SecuritySettings component provides a central place for users to manage their security preferences,
 // with a primary focus on MFA setup and management.
@@ -15,7 +16,7 @@ const SecuritySettings = () => {
     }
 
     return (
-        <div className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
+        <DashboardLayout>
             <div className="space-y-6">
                 {/* Page Header */}
                 <div>
@@ -59,9 +60,9 @@ const SecuritySettings = () => {
                                             type="button"
                                             onClick={() => setShowMFASetup(true)}
                                             className="inline-flex items-center px-4 py-2 border border-transparent 
-                                                     text-sm font-medium rounded-md shadow-sm text-white 
-                                                     bg-indigo-600 hover:bg-indigo-700 focus:outline-none 
-                                                     focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                                    text-sm font-medium rounded-md shadow-sm text-white 
+                                                    bg-indigo-600 hover:bg-indigo-700 focus:outline-none 
+                                                    focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                                         >
                                             <QrCode className="h-5 w-5 mr-2" />
                                             Set Up 2FA
@@ -91,9 +92,9 @@ const SecuritySettings = () => {
                                     <button
                                         type="button"
                                         className="inline-flex items-center px-4 py-2 border border-gray-300 
-                                                 shadow-sm text-sm font-medium rounded-md text-gray-700 
-                                                 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 
-                                                 focus:ring-offset-2 focus:ring-indigo-500"
+                                                shadow-sm text-sm font-medium rounded-md text-gray-700 
+                                                bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 
+                                                focus:ring-offset-2 focus:ring-indigo-500"
                                     >
                                         Change Password
                                     </button>
@@ -103,7 +104,7 @@ const SecuritySettings = () => {
                     </div>
                 </div>
             </div>
-        </div>
+        </DashboardLayout>
     );
 };
 

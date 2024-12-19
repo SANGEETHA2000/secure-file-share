@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status, generics
+from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -13,7 +13,7 @@ class UserViewSet(viewsets.ModelViewSet):
     ViewSet for handling user registration, profile management, and MFA.
     """
     queryset = User.objects.all()
-    permission_classes = [AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     
     def get_serializer_class(self):
         """
@@ -28,15 +28,15 @@ class UserViewSet(viewsets.ModelViewSet):
         Ensure only authenticated users can access their profiles.
         """
         if self.action == 'create':
-            return [AllowAny()]
-        return [IsAuthenticated()]
+            return [permissions.AllowAny()]
+        return super().get_permissions()
 
     @action(detail=False, methods=['get'])
     def me(self, request):
         """
         Get current user's profile.
         """
-        serializer = UserProfileSerializer(request.user)
+        serializer = self.get_serializer(request.user)
         return Response(serializer.data)
 
     @action(detail=False, methods=['post'])

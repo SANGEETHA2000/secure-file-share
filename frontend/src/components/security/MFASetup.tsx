@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux.ts';
-import { Shield, QrCode, Smartphone, XCircle } from 'lucide-react';
+import { QrCode, Smartphone, XCircle } from 'lucide-react';
 import { enableMFA, verifyMFASetup } from '../../store/slices/authSlice.ts';
 
 interface MFASetupProps {
@@ -53,7 +53,7 @@ const MFASetup: React.FC<MFASetupProps> = ({ onClose }) => {
                 return (
                     <div className="space-y-4">
                         <div className="flex items-center justify-center">
-                            <Shield className="h-16 w-16 text-indigo-600" />
+                            <img src="logo.png" alt="FortiFile" className="w-16 h-16" />
                         </div>
                         <div className="text-center">
                             <h3 className="text-lg font-medium text-gray-900">

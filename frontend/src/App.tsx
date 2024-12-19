@@ -1,14 +1,23 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useAppSelector } from './hooks/redux.ts';
+import { useAppDispatch, useAppSelector } from './hooks/redux.ts';
 import Dashboard from './pages/Dashboard.tsx';
 import Login from './components/auth/Login.tsx';
 import Register from './components/auth/Register.tsx';
 import AdminDashboard from './components/admin/AdminDashboard.tsx';
-import SecuritySettings from './components/security/securitySettings.tsx';
+import SecuritySettings from './components/security/SecuritySettings.tsx';
+import { fetchUserProfile } from './store/slices/authSlice.ts';
 
 const App = () => {
+  const dispatch = useAppDispatch();
   const { isAuthenticated, user } = useAppSelector(state => state.auth);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token && !user) {
+        dispatch(fetchUserProfile());
+    }
+}, [dispatch, user]);
 
   return (
     <Router>

@@ -1,10 +1,39 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout.tsx';
 import { Upload } from 'lucide-react';
 import FileUpload from '../components/files/FileUpload.tsx';
 import FileList from '../components/files/FileList.tsx';
+import { fetchFiles } from '../store/slices/fileSlice.ts';
+import { useAppSelector } from '../hooks/redux.ts';
+import { useAppDispatch } from '../hooks/redux.ts';
+import { fetchUserProfile } from '../store/slices/authSlice.ts';
 
 const Dashboard = () => {
+
+  const dispatch = useAppDispatch();
+  const { user, isAuthenticated } = useAppSelector(state => state.auth);
+  const hasInitiallyFetched = useRef(false);
+  
+  useEffect(() => {
+    const fetchInitialData = async () => {
+        try {
+            if (!user) {
+                await dispatch(fetchUserProfile());
+            }
+            if (!hasInitiallyFetched.current) {
+              await dispatch(fetchFiles());
+              hasInitiallyFetched.current = true;
+            }
+        } catch (error) {
+            console.error('Error fetching initial data:', error);
+        }
+    };
+
+    if (isAuthenticated) {
+        fetchInitialData();
+    }
+  }, [isAuthenticated, user, dispatch]);
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -25,10 +54,6 @@ const Dashboard = () => {
         <div className="space-y-6">
           <FileUpload />
           <FileList />
-        </div>
-
-        <div className="bg-gray-50 rounded-lg p-8 text-center text-gray-500">
-          Your file management interface will appear here
         </div>
       </div>
     </DashboardLayout>

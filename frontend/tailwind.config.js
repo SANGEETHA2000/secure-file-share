@@ -22,6 +22,11 @@ module.exports = {
             800: '#075985',
             900: '#0c4a6e',
           },
+          brand: {
+            primary: '#6058E7',
+            light: '#7A73EA',  // Lighter shade
+            dark: '#4842C7',   // Darker shade
+          },
         },
         // We can add custom spacing, breakpoints, or other theme values here
       },

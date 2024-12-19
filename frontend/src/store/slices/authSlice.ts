@@ -12,11 +12,32 @@ interface AuthState {
     mfa_enabled: boolean;    // Tracks if MFA is enabled
 }
 
+interface User {
+    id: string;
+    username: string;
+    email: string;
+    role: string;
+    mfa_enabled: boolean;
+    first_name: string;
+    last_name: string;
+}
+
+interface LoginSuccessResponse {
+    token: string;
+    user: User;
+    requiresMFA: false;
+}
+
+interface LoginMFARequiredResponse {
+    requiresMFA: true;
+    userId: string;
+}
+
 // Set up the initial state
 const initialState: AuthState = {
-    user: null,
+    user: JSON.parse(localStorage.getItem('user') || 'null'),
     token: localStorage.getItem('token'), // Check if we have a saved token
-    isAuthenticated: false,
+    isAuthenticated: !!localStorage.getItem('token'),
     requiresMFA: false,
     tempUserId: null,
     loading: false,
@@ -30,21 +51,31 @@ export const login = createAsyncThunk(
     async (credentials: { username: string; password: string }, { rejectWithValue }) => {
         try {
             const response = await api.post('/auth/login/', credentials);
-            
             // Handle MFA requirement
             if (response.data.require_mfa) {
                 return {
                     requiresMFA: true,
                     userId: response.data.user_id
-                };
+                } as LoginMFARequiredResponse;
             }
 
             // If no MFA needed, store the token and return success
             localStorage.setItem('token', response.data.access);
-            return {
-                token: response.data.access,
-                requiresMFA: false
-            };
+            try {
+                const userResponse = await api.get('/users/me/');
+                const userData = userResponse.data;
+                console.log(userData)
+                localStorage.setItem('user', JSON.stringify(userData));
+                return {
+                    token: response.data.access,
+                    user: userData,
+                    requiresMFA: false
+                } as LoginSuccessResponse;
+            } catch (error) {
+                console.error('Failed to fetch user profile:', error);
+                throw error;
+            }
+            
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.detail || 'Login failed');
         }
@@ -75,16 +106,9 @@ export const verifyMFA = createAsyncThunk(
 // This runs after successful authentication to get user details
 export const fetchUserProfile = createAsyncThunk(
     'auth/fetchProfile',
-    async (_, { getState, rejectWithValue }) => {
-        try {
-            // Get the current state to access the token
-            const { auth } = getState() as { auth: AuthState };
-            
-            const response = await api.get('/users/me/', {
-                headers: {
-                    Authorization: `Bearer ${auth.token}`
-                }
-            });
+    async (_, { rejectWithValue }) => {
+        try {            
+            const response = await api.get('/users/me/');
             return response.data;
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.detail || 'Failed to fetch profile');
@@ -152,6 +176,8 @@ const authSlice = createSlice({
             state.isAuthenticated = false;
             state.requiresMFA = false;
             state.tempUserId = null;
+            state.mfa_enabled = false;
+            localStorage.removeItem('user');
         },
         // Add other synchronous actions here if needed
     },
@@ -169,7 +195,10 @@ const authSlice = createSlice({
                     state.tempUserId = action.payload.userId;
                 } else {
                     state.token = action.payload.token;
+                    state.user = action.payload.user;
                     state.isAuthenticated = true;
+                    localStorage.setItem('token', action.payload.token);
+                    localStorage.setItem('user', JSON.stringify(action.payload.user));
                 }
             })
             .addCase(login.rejected, (state, action) => {

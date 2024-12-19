@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux.ts';
-import { fetchFiles, deleteFile } from '../../store/slices/fileSlice.ts';
+import { deleteFile } from '../../store/slices/fileSlice.ts';
 import { Share2, Trash2, Search, Loader, FileIcon } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import FileDownload from './FileDownload.tsx';
@@ -25,11 +25,6 @@ const FileList: React.FC = () => {
     }>({ key: 'uploaded_at', direction: 'desc' });
     const [selectedFile, setSelectedFile] = useState<{id: string; name: string} | null>(null);
 
-    // Fetch files when component mounts
-    useEffect(() => {
-        dispatch(fetchFiles());
-    }, [dispatch]);
-
     // Handle file download
     const handleDownload = async (fileId: string) => {
         // We'll implement this in the next step
@@ -48,7 +43,7 @@ const FileList: React.FC = () => {
     };
 
     // Handle sharing
-    const handleShare = (fileId: string) => {
+    const handleShare = (fileId: string, fileName: string) => {
         setSelectedFile({ id: fileId, name: fileName });
     };
 
@@ -155,7 +150,7 @@ const FileList: React.FC = () => {
                                             <FileDownload fileId={file.id} fileName={file.original_name} />
                                         </button>
                                         <button
-                                            onClick={() => handleShare(file.id)}
+                                            onClick={() => handleShare(file.id, file.original_name)}
                                             className="p-1 hover:bg-gray-100 rounded-full"
                                             title="Share"
                                         >
