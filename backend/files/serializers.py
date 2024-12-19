@@ -26,21 +26,13 @@ class FileSerializer(serializers.ModelSerializer):
         
         # Create the file instance with the remaining data
         file_instance = File.objects.create(
-            name=upload_file.name,  # You might want to generate a unique name here
+            name=upload_file.name,  # This will be overwritten by the view
             original_name=upload_file.name,
             mime_type=upload_file.content_type,
             size=upload_file.size,
             owner=self.context['request'].user,
-            # Add any encryption handling here
-            encryption_key_id='temp-key'  # Replace with actual encryption key handling
+            encryption_key_id='temp-key'  # This will be overwritten by the view
         )
-
-        # Handle the actual file storage
-        # You might want to add your encryption logic here
-        file_path = f'encrypted_files/{file_instance.name}'
-        with open(file_path, 'wb+') as destination:
-            for chunk in upload_file.chunks():
-                destination.write(chunk)
 
         return file_instance
 

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Download, Loader } from 'lucide-react';
-import { useAppDispatch } from '../../hooks/redux.ts';
-import { downloadFile } from '../../store/slices/fileSlice.ts';
+import api from '../../api/axios.ts';
 
 interface FileDownloadProps {
     fileId: string;
@@ -9,40 +8,55 @@ interface FileDownloadProps {
 }
 
 const FileDownload: React.FC<FileDownloadProps> = ({ fileId, fileName }) => {
-    const dispatch = useAppDispatch();
-    const [isDownloading, setIsDownloading] = useState(false);
+    const [downloading, setDownloading] = useState(false);
 
     const handleDownload = async () => {
-        if (isDownloading) return; // Prevent multiple simultaneous downloads
-        
-        setIsDownloading(true);
+        if (downloading) return; // Prevent multiple simultaneous downloads
+
         try {
-            await dispatch(downloadFile(fileId)).unwrap();
+            setDownloading(true);
+            
+            // Make the download request with blob response type
+            const response = await api.get(`/files/${fileId}/download/`, {
+                responseType: 'blob',  // This is crucial for handling binary data
+            });
+
+            // Create a blob URL and trigger the download
+            const blob = new Blob([response.data], { 
+                type: response.headers['content-type'] 
+            });
+            const url = window.URL.createObjectURL(blob);
+            
+            // Create and use a temporary link element to trigger the download
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', fileName);
+            document.body.appendChild(link);
+            link.click();
+            
+            // Clean up
+            link.remove();
+            window.URL.revokeObjectURL(url);
         } catch (error) {
-            // You might want to show an error notification here
             console.error('Download failed:', error);
+            // You might want to add error handling UI here
         } finally {
-            setIsDownloading(false);
+            setDownloading(false);
         }
     };
 
     return (
         <button
             onClick={handleDownload}
-            disabled={isDownloading}
-            className="p-1 hover:bg-gray-100 rounded-full relative group"
-            title={`Download ${fileName}`}
+            disabled={downloading}
+            className="p-1 hover:bg-gray-100 rounded-full"
+            title={downloading ? 'Downloading...' : 'Download'}
         >
-            {isDownloading ? (
+            {downloading ? (
                 <Loader className="h-5 w-5 text-gray-500 animate-spin" />
             ) : (
-                <Download className="h-5 w-5 text-gray-500 group-hover:text-indigo-600" />
+                <Download className="h-5 w-5 text-gray-500" />
             )}
-            
-            {/* Tooltip */}
-            <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                Download
-            </span>
         </button>
     );
 };

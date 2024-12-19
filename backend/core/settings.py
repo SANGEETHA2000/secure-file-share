@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 from datetime import timedelta
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -157,3 +158,13 @@ SIMPLE_JWT = {
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
 }
+
+# Define the base directory for file storage
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = '/media/'
+
+# Create a specific directory for encrypted files
+ENCRYPTED_FILES_DIR = os.path.join(MEDIA_ROOT, 'encrypted_files')
+
+# Create the directory if it doesn't exist
+os.makedirs(ENCRYPTED_FILES_DIR, exist_ok=True)

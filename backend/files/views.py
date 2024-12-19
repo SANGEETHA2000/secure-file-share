@@ -59,47 +59,44 @@ class FileViewSet(viewsets.ModelViewSet):
         default_storage.save(file_path, ContentFile(encrypted_content))
         
         # Store file metadata and encryption key reference
-        serializer.save(
-            owner=self.request.user,
-            name=encrypted_filename,
-            original_name=uploaded_file.name,
-            mime_type=uploaded_file.content_type,
-            size=uploaded_file.size,
-            encryption_key_id=encryption_key.decode()  # Store key reference securely
-        )
+        file_instance = serializer.save()
+        file_instance.name = encrypted_filename
+        file_instance.encryption_key_id = encryption_key.decode()
+        file_instance.save()
 
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=['get'], permission_classes=[IsFileOwnerOrSharedWith])
     def download(self, request, pk=None):
         """
         Handle secure file download with decryption.
         """
         file_obj = self.get_object()
-        
-        # Check if user has download permission
-        if not request.user.has_file_permission(file_obj, 'DOWNLOAD'):
-            return Response(
-                {'detail': 'Download permission required.'},
-                status=status.HTTP_403_FORBIDDEN
+
+        try:
+            # Get the encryption key and initialize Fernet
+            fernet = Fernet(file_obj.encryption_key_id.encode())
+            
+            # Read the encrypted file
+            file_path = os.path.join(settings.ENCRYPTED_FILES_DIR, file_obj.name)
+            with default_storage.open(file_path, 'rb') as f:
+                encrypted_content = f.read()
+            
+            # Decrypt the content
+            decrypted_content = fernet.decrypt(encrypted_content)
+            
+            # Create response with proper headers
+            response = HttpResponse(
+                decrypted_content,
+                content_type=file_obj.mime_type or 'application/octet-stream'
             )
+            response['Content-Disposition'] = f'attachment; filename="{file_obj.original_name}"'
+            return response
         
-        # Get the encryption key and initialize Fernet
-        fernet = Fernet(file_obj.encryption_key_id.encode())
-        
-        # Read the encrypted file
-        file_path = os.path.join('encrypted_files', file_obj.name)
-        with default_storage.open(file_path, 'rb') as f:
-            encrypted_content = f.read()
-        
-        # Decrypt the content
-        decrypted_content = fernet.decrypt(encrypted_content)
-        
-        # Prepare the response with the original filename
-        response = HttpResponse(
-            decrypted_content,
-            content_type=file_obj.mime_type
-        )
-        response['Content-Disposition'] = f'attachment; filename="{file_obj.original_name}"'
-        return response
+        except Exception as e:
+            print(f"Download error: {str(e)}")  # For debugging
+            return Response(
+                {'detail': 'Failed to download file.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class FileShareViewSet(viewsets.ModelViewSet):
     """

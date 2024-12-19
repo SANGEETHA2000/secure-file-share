@@ -1,33 +1,20 @@
-import React, { useCallback, useState } from 'react';
-import { useAppDispatch, useAppSelector } from '../../hooks/redux.ts';
-import { uploadFile } from '../../store/slices/fileSlice.ts';
+import React, { useCallback,  useState } from 'react';
+import {  useAppSelector } from '../../hooks/redux.ts';
 import { UploadCloud, X, Loader } from 'lucide-react';
 
 interface FileUploadProps {
     onFileSelect: (file: File | null) => void;
+    selectedFile: File | null;
 }
 
-const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
-    const dispatch = useAppDispatch();
+const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, selectedFile }) => {
     const { loading, uploadProgress } = useAppSelector(state => state.files);
     const [dragActive, setDragActive] = useState(false);
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
     // Update the file selection handlers to notify parent component
     const handleFileSelect = (file: File | null) => {
-        setSelectedFile(file);
         onFileSelect(file);  // Notify parent component
     };
-
-    // Handle the actual file upload
-    const handleFileUpload = useCallback(async (file: File) => {
-        try {
-            await dispatch(uploadFile(file)).unwrap();
-            setSelectedFile(null);
-        } catch (error) {
-            console.error('Upload failed:', error);
-        }
-    }, [dispatch]);
 
     // Handle files being dropped
     const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -62,7 +49,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
 
     // Clear selected file
     const handleClear = () => {
-        handleFileSelect(null);
+        onFileSelect(null);
     };
 
     return (

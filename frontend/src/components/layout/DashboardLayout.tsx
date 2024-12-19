@@ -77,7 +77,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <span className="text-sm text-gray-500">
-                  Welcome, {loading ? '...' : user?.first_name || 'Guest'}
+                  Welcome, {loading ? '...' : user?.first_name + '!' || 'Guest!'}
                 </span>
               </div>
             </div>

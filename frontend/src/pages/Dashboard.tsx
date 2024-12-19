@@ -82,7 +82,7 @@ const Dashboard = () => {
                 </div>
 
                 <div className="space-y-6">
-                    <FileUpload onFileSelect={setSelectedFile} />
+                    <FileUpload onFileSelect={setSelectedFile} selectedFile={selectedFile} />
                     <FileList />
                 </div>
             </div>

@@ -27,7 +27,6 @@ const FileList: React.FC = () => {
 
     // Handle file download
     const handleDownload = async (fileId: string) => {
-        // We'll implement this in the next step
         console.log('Downloading file:', fileId);
     };
 
@@ -135,10 +134,10 @@ const FileList: React.FC = () => {
                                         <FileIcon className="h-5 w-5 text-gray-400 mr-3" />
                                         <span className="truncate">{file.original_name}</span>
                                     </div>
-                                    <div className="col-span-3 text-sm text-gray-500">
+                                    <div className="col-span-3 text-sm text-gray-500 flex items-center">
                                         {formatDistanceToNow(new Date(file.uploaded_at), { addSuffix: true })}
                                     </div>
-                                    <div className="col-span-2 text-sm text-gray-500">
+                                    <div className="col-span-2 text-sm text-gray-500 flex items-center">
                                         {formatFileSize(file.size)}
                                     </div>
                                     <div className="col-span-2 flex justify-end space-x-2">
