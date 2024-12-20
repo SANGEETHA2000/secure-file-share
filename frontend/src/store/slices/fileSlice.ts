@@ -89,7 +89,7 @@ export const uploadFile = createAsyncThunk(
             const formData = new FormData();
             formData.append('file', file);
             formData.append('original_name', file.name);
-
+            formData.append('mime_type', file.type);
             // Add client-side encryption key
             const clientKey = (file as any).clientKey;
             if (clientKey) {

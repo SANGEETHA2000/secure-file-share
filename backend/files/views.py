@@ -31,11 +31,8 @@ class FileViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.is_admin():
             return File.objects.all()
-        return File.objects.filter(
-            models.Q(owner=user) | 
-            models.Q(shares__shared_with=user, shares__expires_at__gt=timezone.now())
-        ).distinct()
-
+        return File.objects.filter(models.Q(owner=user)).distinct()
+    
     def perform_create(self, serializer):
         """
         Handle file upload with encryption.

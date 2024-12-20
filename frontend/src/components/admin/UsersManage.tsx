@@ -16,20 +16,20 @@ const UsersManage: React.FC = () => {
         dispatch(fetchAllUsers());
     }, [dispatch]);
 
-    const handleRoleChange = async (userId: string, newRole: string) => {
-        if (userId === currentUser?.id) {
-            setRoleUpdateError("You cannot change your own role.");
-            return;
-        }
+    // const handleRoleChange = async (userId: string, newRole: string) => {
+    //     if (userId === currentUser?.id) {
+    //         setRoleUpdateError("You cannot change your own role.");
+    //         return;
+    //     }
 
-        try {
-            await dispatch(updateUserRole({ userId, role: newRole })).unwrap();
-            setRoleUpdateError(null);
-        } catch (error) {
-            console.error('Failed to update user role:', error);
-            setRoleUpdateError('Failed to update user role. Please try again.');
-        }
-    };
+    //     try {
+    //         await dispatch(updateUserRole({ userId, role: newRole })).unwrap();
+    //         setRoleUpdateError(null);
+    //     } catch (error) {
+    //         console.error('Failed to update user role:', error);
+    //         setRoleUpdateError('Failed to update user role. Please try again.');
+    //     }
+    // };
 
     const formatStorageSize = (bytes: number) => {
         const sizes = ['Bytes', 'KB', 'MB', 'GB'];
@@ -164,8 +164,8 @@ const UsersManage: React.FC = () => {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <select
+                                        <td className="px-6 py-4 text-sm text-gray-500">
+                                            {/* <select
                                                 value={user.role}
                                                 onChange={(e) => handleRoleChange(user.id, e.target.value)}
                                                 disabled={user.id === currentUser?.id}
@@ -176,7 +176,8 @@ const UsersManage: React.FC = () => {
                                                 <option value="USER">User</option>
                                                 <option value="ADMIN">Admin</option>
                                                 <option value="GUEST">Guest</option>
-                                            </select>
+                                            </select> */}
+                                            {user.role}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500">
                                             {formatStorageSize(user.storage_used)}
@@ -191,7 +192,7 @@ const UsersManage: React.FC = () => {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500">
-                                            {formatDistanceToNow(new Date(user.last_login), { addSuffix: true })}
+                                            {user.last_login ? formatDistanceToNow(new Date(user.last_login), { addSuffix: true }) : 'N/A'}
                                         </td>
                                     </tr>
                                 ))
