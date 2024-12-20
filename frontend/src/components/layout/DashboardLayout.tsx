@@ -61,14 +61,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   ];
 
   const userNavigation: NavigationItem[] = [
-    { name: 'My Files', icon: FolderIcon, href: '/dashboard' },
-    { name: 'Shared Files', icon: ShareIcon, href: '/shared' },
+    { name: 'My Files', icon: FolderIcon, href: '/user/files' },
+    { name: 'Files Shared with Me', icon: ShareIcon, href: '/user/shared' },
     { name: 'Security Settings', icon: Shield, href: '/security' },
     { name: 'Logout', icon: LogOutIcon, onClick: handleLogout },
   ];
 
   const guestNavigation: NavigationItem[] = [
-    { name: 'Shared Files', icon: ShareIcon, href: '/shared' },
+    { name: 'Files Shared with Me', icon: ShareIcon, href: '/guest/shared' },
     { name: 'Security Settings', icon: Shield, href: '/security' },
     { name: 'Logout', icon: LogOutIcon, onClick: handleLogout },
   ];

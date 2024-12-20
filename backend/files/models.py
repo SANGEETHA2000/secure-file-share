@@ -1,19 +1,23 @@
+# files/models.py
 from django.db import models
 from django.core.validators import MinLengthValidator
 from django.conf import settings
 import uuid
-from datetime import datetime, timedelta
+from django.utils import timezone
+from datetime import timedelta
+
+def get_default_expiry():
+    """Return default expiration time (24 hours from now)"""
+    return timezone.now() + timedelta(days=1)
 
 class File(models.Model):
     """
     Represents an encrypted file in the system.
-    References the User model from the users app via settings.AUTH_USER_MODEL
     """
     id = models.UUIDField(
         primary_key=True,
         default=uuid.uuid4,
-        editable=False,
-        help_text="Unique identifier for the file"
+        editable=False
     )
     name = models.CharField(
         max_length=255,
@@ -41,34 +45,23 @@ class File(models.Model):
         help_text="Client-side encryption key"
     )
     owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL,  # References User model from users app
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='owned_files',
-        help_text="User who owns this file"
+        related_name='owned_files'
     )
     uploaded_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
-    def generate_share_link(self, created_by, expires_in_hours=24):
-        """
-        Generate a secure sharing link for this file.
-        """
-        return FileShare.objects.create(
-            file=self,
-            created_by=created_by,
-            expires_at=datetime.now() + timedelta(hours=expires_in_hours)
-        )
 
     class Meta:
         ordering = ['-uploaded_at']
 
 class FileShare(models.Model):
     """
-    Manages file sharing permissions and temporary access links.
+    Manages file sharing permissions and access control.
     """
     class Permissions(models.TextChoices):
         VIEW = 'VIEW', 'View Only'
-        DOWNLOAD = 'DOWNLOAD', 'Download Allowed'
+        DOWNLOAD = 'DOWNLOAD', 'View and Download'
 
     id = models.UUIDField(
         primary_key=True,
@@ -76,7 +69,7 @@ class FileShare(models.Model):
         editable=False
     )
     file = models.ForeignKey(
-        'File',
+        File,
         on_delete=models.CASCADE,
         related_name='shares'
     )
@@ -88,9 +81,9 @@ class FileShare(models.Model):
     shared_with = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
+        related_name='received_shares',
         null=True,
-        blank=True,
-        related_name='received_shares'
+        blank=True
     )
     permission = models.CharField(
         max_length=10,
@@ -100,19 +93,21 @@ class FileShare(models.Model):
     access_token = models.CharField(
         max_length=64,
         unique=True,
-        validators=[MinLengthValidator(64)]
+        blank=True
     )
     expires_at = models.DateTimeField(
-        null=True,
-        blank=True
+        default=get_default_expiry 
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def save(self, *args, **kwargs):
+        if not self.access_token:
+            self.access_token = uuid.uuid4().hex  # Generate new token only if not set
+        super().save(*args, **kwargs)
+
     def is_valid(self):
-        """
-        Check if the share link is still valid.
-        """
-        return self.expires_at is None or self.expires_at > datetime.now()
+        """Check if share hasn't expired"""
+        return timezone.now() <= self.expires_at
 
     class Meta:
         ordering = ['-created_at']

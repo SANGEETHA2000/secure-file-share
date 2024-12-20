@@ -32,13 +32,6 @@ interface FileState {
     } | null;
 }
 
-interface ShareSettings {
-    fileId: string;
-    expiresIn?: number;  // Duration in hours
-    email?: string;      // For user-to-user sharing
-    permission: 'VIEW' | 'DOWNLOAD';
-}
-
 interface ShareLink {
     id: string;
     accessToken: string;
@@ -48,6 +41,24 @@ interface ShareLink {
         id: string;
         email: string;
     };
+}
+
+interface ShareLinkParams {
+    fileId: string;
+    email: string;
+    expires_in_minutes: number;
+    permission: 'VIEW' | 'DOWNLOAD';
+}
+
+interface ShareAccessParams {
+    token: string;
+    email: string;
+}
+
+interface ShareAccessResponse {
+    fileId: string;
+    temporaryPassword?: string;
+    permission: 'VIEW' | 'DOWNLOAD';
 }
 
 interface DownloadResponse {
@@ -104,7 +115,7 @@ export const uploadFile = createAsyncThunk(
     }
 );
 
-// Fetch the list of files
+// Fetch the list of files of the user
 export const fetchFiles = createAsyncThunk(
     'files/fetchAll',
     async (_, { rejectWithValue }) => {
@@ -173,14 +184,35 @@ export const downloadFile = createAsyncThunk<DownloadResponse, string>(
 );
 
 // Add a new action to create share links
-export const createShareLink = createAsyncThunk(
+export const createShareLink = createAsyncThunk<ShareLink, ShareLinkParams>(
     'files/createShare',
-    async (settings: ShareSettings, { rejectWithValue }) => {
+    async (params, { rejectWithValue }) => {
         try {
-            const response = await api.post('/shares/', settings);
+            const response = await api.post('/shares/', {
+                file: params.fileId,
+                shared_with_email: params.email,
+                expires_in_minutes: params.expires_in_minutes,
+                permission: params.permission
+            });
             return response.data;
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.detail || 'Failed to create share link');
+        }
+    }
+);
+
+// Verify share access
+export const verifyShareAccess = createAsyncThunk<ShareAccessResponse, ShareAccessParams>(
+    'files/verifyAccess',
+    async (params, { rejectWithValue }) => {
+        try {
+            const response = await api.post('/shares/verify-access/', {
+                token: params.token,
+                email: params.email
+            });
+            return response.data;
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.detail || 'Invalid or expired share link');
         }
     }
 );
@@ -298,13 +330,14 @@ const fileSlice = createSlice({
                 state.files = state.files.filter(file => file.id !== action.payload);
             })
 
+            // Create share link cases
             .addCase(createShareLink.pending, (state) => {
                 state.sharingLoading = true;
                 state.sharingError = null;
             })
             .addCase(createShareLink.fulfilled, (state, action) => {
                 state.sharingLoading = false;
-                state.shareLinks = [...state.shareLinks, action.payload];
+                state.shareLinks.push(action.payload);
             })
             .addCase(createShareLink.rejected, (state, action) => {
                 state.sharingLoading = false;
@@ -356,6 +389,19 @@ const fileSlice = createSlice({
                     totalSize: action.payload.total_size,
                     activeShares: action.payload.active_shares
                 };
+            })
+            
+            // Verify share access cases
+            .addCase(verifyShareAccess.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(verifyShareAccess.fulfilled, (state) => {
+                state.loading = false;
+            })
+            .addCase(verifyShareAccess.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload as string;
             });
     }
 });

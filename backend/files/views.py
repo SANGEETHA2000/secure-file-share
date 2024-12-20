@@ -91,13 +91,13 @@ class FileViewSet(viewsets.ModelViewSet):
             
             # Set required headers
             response['Content-Disposition'] = f'attachment; filename="{file_obj.original_name}"'
-            response['Access-Control-Allow-Origin'] = 'http://localhost:3000'
-            response['Access-Control-Allow-Credentials'] = 'true'
+            # response['Access-Control-Allow-Origin'] = 'http://localhost:3000'
+            # response['Access-Control-Allow-Credentials'] = 'true'
             response['X-Client-Key'] = file_obj.client_key
             
-            if request.method == 'OPTIONS':
-                response['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
-                response['Access-Control-Allow-Headers'] = 'Authorization, Content-Type'
+            # if request.method == 'OPTIONS':
+            #     response['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+            #     response['Access-Control-Allow-Headers'] = 'Authorization, Content-Type'
                 
             return response
             
@@ -161,7 +161,7 @@ class FileViewSet(viewsets.ModelViewSet):
 class FileShareViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing file sharing functionality.
-    Handles both user-to-user sharing and public link generation.
+    Handles both user-to-user sharing and access control.
     """
     serializer_class = FileShareSerializer
     permission_classes = [IsAuthenticated]
@@ -183,37 +183,63 @@ class FileShareViewSet(viewsets.ModelViewSet):
         """
         Create a new file share with proper access token generation.
         """
-        # Generate a secure access token
-        access_token = uuid.uuid4().hex
-        
-        # Set the creator and access token
-        serializer.save(
-            created_by=self.request.user,
-            access_token=access_token
-        )
+        serializer.save()
 
-    @action(detail=False, methods=['get'])
-    def public_access(self, request):
+    @action(detail=False, methods=['post'])
+    def verify_access(self, request):
         """
-        Handle access to files through public share links.
+        Verify file share access and handle guest user access.
         """
-        access_token = request.query_params.get('token')
-        if not access_token:
+        token = request.data.get('token')
+        email = request.data.get('email')
+
+        if not token or not email:
             return Response(
-                {'detail': 'Access token required.'},
+                {'detail': 'Token and email are required.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         try:
             share = FileShare.objects.get(
-                access_token=access_token,
+                access_token=token,
                 expires_at__gt=timezone.now()
             )
+            
+            # Verify email matches shared_with
+            if share.shared_with.email != email:
+                raise FileShare.DoesNotExist
+
+            response_data = {
+                'fileId': str(share.file.id),
+                'permission': share.permission,
+            }
+
+            # Include temporary password for guest users
+            if share.shared_with.role == 'GUEST':
+                response_data['temporaryPassword'] = share.shared_with.password
+
+            return Response(response_data)
+            
         except FileShare.DoesNotExist:
             return Response(
-                {'detail': 'Invalid or expired share link.'},
+                {'detail': 'Invalid or expired share link'},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+    @action(detail=True, methods=['post'])
+    def revoke(self, request, pk=None):
+        """
+        Revoke a file share by setting its expiration to now.
+        """
+        share = self.get_object()
         
-        serializer = FileSerializer(share.file)
-        return Response(serializer.data)
+        if share.created_by != request.user and not request.user.is_admin():
+            return Response(
+                {'detail': 'Not authorized to revoke this share'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        share.expires_at = timezone.now()
+        share.save()
+        
+        return Response({'detail': 'Share revoked successfully'})

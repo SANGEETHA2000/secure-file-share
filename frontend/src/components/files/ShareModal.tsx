@@ -1,8 +1,8 @@
 // src/components/files/ShareModal.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppDispatch } from '../../hooks/redux.ts';
-import { X, Copy, Link } from 'lucide-react';
-import { createShareLink } from '../../store/slices/fileSlice.ts';
+import { X, Copy, AlertCircle, CheckCircle, XCircle} from 'lucide-react';
+import { createShareLink, fetchFileShares } from '../../store/slices/fileSlice.ts';
 
 interface ShareModalProps {
     isOpen: boolean;
@@ -10,6 +10,15 @@ interface ShareModalProps {
     fileId: string;
     fileName: string;
 }
+
+const EXPIRY_OPTIONS = [
+    { label: '30 minutes', value: 30 },
+    { label: '1 hour', value: 60 },
+    { label: '6 hours', value: 360 },
+    { label: '1 day', value: 1440 },
+    { label: '3 days', value: 4320 },
+    { label: '7 days', value: 10080 }
+];
 
 const ShareModal: React.FC<ShareModalProps> = ({
     isOpen,
@@ -19,27 +28,37 @@ const ShareModal: React.FC<ShareModalProps> = ({
 }) => {
     const dispatch = useAppDispatch();
     const [email, setEmail] = useState('');
-    const [expiresIn, setExpiresIn] = useState('24');
+    const [expiryMinutes, setExpiryMinutes] = useState(30);
     const [permission, setPermission] = useState<'VIEW' | 'DOWNLOAD'>('VIEW');
-    const [generatedLink, setGeneratedLink] = useState('');
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleShare = async () => {
         try {
-            const result = await dispatch(createShareLink({
+            setIsLoading(true);
+            setError(null);
+            setSuccess(null);
+
+            if (!email) {
+                setError('Email address is required');
+                return;
+            }
+
+            await dispatch(createShareLink({
                 fileId,
-                email: email || undefined,
-                expiresIn: parseInt(expiresIn),
+                email,
+                expires_in_minutes: expiryMinutes,
                 permission
             })).unwrap();
 
-            setGeneratedLink(`${window.location.origin}/share/${result.accessToken}`);
-        } catch (error) {
-            console.error('Failed to create share link:', error);
+            setSuccess(`File shared successfully with ${email}`);
+            setEmail('');
+        } catch (error: any) {
+            setError(error.message || 'Failed to share file');
+        } finally {
+            setIsLoading(false);
         }
-    };
-
-    const handleCopy = () => {
-        navigator.clipboard.writeText(generatedLink);
     };
 
     if (!isOpen) return null;
@@ -60,69 +79,76 @@ const ShareModal: React.FC<ShareModalProps> = ({
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700">
-                            Share with (optional)
+                            Share with (Email address) *
                         </label>
                         <input
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="Enter email address"
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            required
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm 
+                                     focus:border-indigo-500 focus:ring-indigo-500"
                         />
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700">
-                            Expires in
+                            Link expires in
                         </label>
                         <select
-                            value={expiresIn}
-                            onChange={(e) => setExpiresIn(e.target.value)}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            value={expiryMinutes}
+                            onChange={(e) => setExpiryMinutes(Number(e.target.value))}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm 
+                                     focus:border-indigo-500 focus:ring-indigo-500"
                         >
-                            <option value="24">24 hours</option>
-                            <option value="72">3 days</option>
-                            <option value="168">7 days</option>
-                            <option value="720">30 days</option>
+                            {EXPIRY_OPTIONS.map(option => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
                         </select>
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700">
-                            Permission
+                            Permissions
                         </label>
                         <select
                             value={permission}
                             onChange={(e) => setPermission(e.target.value as 'VIEW' | 'DOWNLOAD')}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm 
+                                     focus:border-indigo-500 focus:ring-indigo-500"
                         >
                             <option value="VIEW">View only</option>
-                            <option value="DOWNLOAD">Allow download</option>
+                            <option value="DOWNLOAD">View and download</option>
                         </select>
                     </div>
 
-                    <button
-                        onClick={handleShare}
-                        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                        Generate Share Link
-                    </button>
-
-                    {generatedLink && (
-                        <div className="mt-4">
-                            <div className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
-                                <div className="truncate mr-2">
-                                    {generatedLink}
-                                </div>
-                                <button
-                                    onClick={handleCopy}
-                                    className="p-1 hover:bg-gray-200 rounded"
-                                >
-                                    <Copy className="h-5 w-5 text-gray-500" />
-                                </button>
-                            </div>
+                    {error && (
+                        <div className="p-3 bg-red-50 text-red-700 rounded-md flex items-center">
+                            <AlertCircle className="h-5 w-5 mr-2" />
+                            <span>{error}</span>
                         </div>
                     )}
+
+                    {success && (
+                        <div className="p-3 bg-green-50 text-green-700 rounded-md flex items-center">
+                            <CheckCircle className="h-5 w-5 mr-2" />
+                            <span>{success}</span>
+                        </div>
+                    )}
+
+                    <button
+                        onClick={handleShare}
+                        disabled={isLoading}
+                        className={`w-full flex justify-center py-2 px-4 border border-transparent 
+                                  rounded-md shadow-sm text-sm font-medium text-white 
+                                  ${isLoading ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700'}
+                                  focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
+                    >
+                        {isLoading ? 'Sharing...' : 'Share File'}
+                    </button>
                 </div>
             </div>
         </div>

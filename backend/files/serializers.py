@@ -1,97 +1,107 @@
+# files/serializers.py
 from rest_framework import serializers
 from .models import File, FileShare
-from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.utils import timezone
+from datetime import timedelta
+import secrets
+import string
+
+User = get_user_model()
+
+def generate_secure_password(length=12):
+    """Generate a secure random password"""
+    alphabet = string.ascii_letters + string.digits + string.punctuation
+    while True:
+        password = ''.join(secrets.choice(alphabet) for i in range(length))
+        # Check if password has at least one of each required type
+        if (any(c.islower() for c in password)
+                and any(c.isupper() for c in password)
+                and any(c.isdigit() for c in password)
+                and any(c in string.punctuation for c in password)):
+            return password
 
 class FileSerializer(serializers.ModelSerializer):
-    """
-    Serializer for handling file uploads and metadata.
-    Handles file encryption and secure storage.
-    """
     file = serializers.FileField(write_only=True)
-    download_url = serializers.SerializerMethodField()
     owner_name = serializers.SerializerMethodField()
 
     class Meta:
         model = File
         fields = ('id', 'name', 'original_name', 'mime_type', 'size', 
-                 'owner', 'uploaded_at', 'updated_at', 'file', 'download_url', 'owner_name',
-                 'encryption_key_id')
-        read_only_fields = ('id', 'name', 'original_name', 'mime_type', 'size',
-                          'owner', 'uploaded_at', 'updated_at', 'encryption_key_id')
+                 'owner', 'uploaded_at', 'file', 'owner_name')
+        read_only_fields = ('id', 'name', 'size', 'owner', 'uploaded_at')
 
     def create(self, validated_data):
-        # Extract the file from validated data
         upload_file = validated_data.pop('file')
         client_key = validated_data.pop('client_key', None)
         
-        # Create the file instance with the remaining data
         file_instance = File.objects.create(
-            name=upload_file.name,  # This will be overwritten by the view
+            name=upload_file.name,
             original_name=upload_file.name,
             mime_type=upload_file.content_type,
             size=upload_file.size,
             owner=self.context['request'].user,
-            encryption_key_id='temp-key',  # This will be overwritten by the view
+            encryption_key_id='temp-key',
             client_key=client_key
         )
-
         return file_instance
 
-    def get_download_url(self, obj):
-        """
-        Generate a secure download URL for the file.
-        """
-        return f'/api/files/{obj.id}/download/'
-
     def get_owner_name(self, obj):
-        """
-        Return the full name of the file owner.
-        """
         return f"{obj.owner.first_name} {obj.owner.last_name}"
 
 class FileShareSerializer(serializers.ModelSerializer):
-    """
-    Serializer for handling file sharing functionality.
-    Manages share permissions and access tokens.
-    """
-    share_url = serializers.SerializerMethodField()
-    file_name = serializers.SerializerMethodField()
-    shared_with_email = serializers.EmailField(write_only=True, required=False)
-    expires_in_hours = serializers.IntegerField(write_only=True, required=False)
+    shared_with_email = serializers.EmailField(write_only=True)
+    expires_in_minutes = serializers.IntegerField(
+        write_only=True,
+        min_value=30,
+        max_value=10080  # 7 days
+    )
 
     class Meta:
         model = FileShare
-        fields = ('id', 'file', 'created_by', 'shared_with', 'permission',
-                 'access_token', 'expires_at', 'share_url', 'file_name',
-                 'shared_with_email', 'expires_in_hours')
-        read_only_fields = ('id', 'created_by', 'access_token', 'share_url')
-
-    def get_share_url(self, obj):
-        """
-        Generate the shareable URL for the file.
-        """
-        return f'/api/share/{obj.access_token}/'
-
-    def get_file_name(self, obj):
-        """
-        Return the original name of the shared file.
-        """
-        return obj.file.original_name
+        fields = ('id', 'file', 'shared_with_email', 'permission', 
+                 'expires_in_minutes', 'expires_at', 'access_token')
+        read_only_fields = ('id', 'expires_at', 'access_token')
 
     def validate(self, data):
-        """
-        Validate sharing permissions and handle user lookup.
-        """
-        if 'shared_with_email' in data:
-            User = get_user_model()
-            try:
-                user = User.objects.get(email=data['shared_with_email'])
-                data['shared_with'] = user
-            except User.DoesNotExist:
-                raise serializers.ValidationError({
-                    'shared_with_email': 'No user found with this email address.'
-                })
-            del data['shared_with_email']
-        
+        # Check if trying to share with self
+        if data['shared_with_email'] == self.context['request'].user.email:
+            raise serializers.ValidationError({
+                'shared_with_email': "You cannot share a file with yourself."
+            })
+
+        # Validate file ownership
+        if data['file'].owner != self.context['request'].user:
+            raise serializers.ValidationError({
+                'file': "You don't have permission to share this file."
+            })
+
         return data
+
+    def create(self, validated_data):
+        email = validated_data.pop('shared_with_email')
+        minutes = validated_data.pop('expires_in_minutes')
+        
+        # Get or create user (as guest if doesn't exist)
+        user, created = User.objects.get_or_create(
+            email=email,
+            defaults={
+                'username': email.split('@')[0],
+                'role': 'GUEST',
+                'password': generate_secure_password() 
+            }
+        )
+
+         # If user was just created, need to set password properly
+        if created:
+            user.set_password(user.password)  # Hash the password
+            user.save()
+
+        # Create share
+        expires_at = timezone.now() + timedelta(minutes=minutes)
+        return FileShare.objects.create(
+            **validated_data,
+            shared_with=user,
+            created_by=self.context['request'].user,
+            expires_at=expires_at
+        )
