@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux.ts';
 import { fetchAllUsers, updateUserRole } from '../../store/slices/adminSlice.ts';
-import { Users, Shield, HardDrive, Activity, Loader, AlertTriangle } from 'lucide-react';
+import { Users, Shield, HardDrive, Activity, Loader, AlertTriangle, Search } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import StatisticsCard from '../layout/StatisticsCardLayout.tsx';
 
 const UsersManage: React.FC = () => {
     const dispatch = useAppDispatch();
@@ -56,85 +57,66 @@ const UsersManage: React.FC = () => {
         <div className="p-6 space-y-6">
             {/* Statistics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white p-6 rounded-lg shadow">
-                    <div className="flex items-center">
-                        <Users className="h-8 w-8 text-indigo-600" />
-                        <div className="ml-4">
-                            <p className="text-sm font-medium text-gray-600">Total Users</p>
-                            <p className="text-2xl font-semibold text-gray-900">{totalUsers}</p>
-                            <div className="mt-1 text-xs text-gray-500">
-                                Admin: {usersByRole.ADMIN} • Regular: {usersByRole.USER} • Guest: {usersByRole.GUEST}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <StatisticsCard
+                    icon={Users}
+                    title="Total Users"
+                    value={totalUsers}
+                    iconColor="text-indigo-600"
+                    subtitle={`Admin: ${usersByRole.ADMIN}, User: ${usersByRole.USER}, Guest: ${usersByRole.GUEST}`}
+                />
+                
+                <StatisticsCard
+                    icon={Shield}
+                    title="MFA Enabled"
+                    value={`${totalUsers > 0 ? ((mfaEnabledUsers / totalUsers) * 100).toFixed(1) : 0}%`}
+                    iconColor="text-green-600"
+                />
+                
+                <StatisticsCard
+                    icon={HardDrive}
+                    title="Total Storage Used"
+                    value={formatStorageSize(totalStorage)}
+                    iconColor="text-blue-600"
+                />
+                
+                <StatisticsCard
+                    icon={Activity}
+                    title="Active Today"
+                    value={users.filter(user =>
+                        new Date(user.last_login).toDateString() === new Date().toDateString()
+                    ).length}
+                    iconColor="text-purple-600"
+                />
+            </div>
 
-                <div className="bg-white p-6 rounded-lg shadow">
-                    <div className="flex items-center">
-                        <Shield className="h-8 w-8 text-green-600" />
-                        <div className="ml-4">
-                            <p className="text-sm font-medium text-gray-600">MFA Enabled</p>
-                            <p className="text-2xl font-semibold text-gray-900">
-                                {totalUsers > 0 ? ((mfaEnabledUsers / totalUsers) * 100).toFixed(1) : 0}%
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-lg shadow">
-                    <div className="flex items-center">
-                        <HardDrive className="h-8 w-8 text-blue-600" />
-                        <div className="ml-4">
-                            <p className="text-sm font-medium text-gray-600">Total Storage Used</p>
-                            <p className="text-2xl font-semibold text-gray-900">
-                                {formatStorageSize(totalStorage)}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-lg shadow">
-                    <div className="flex items-center">
-                        <Activity className="h-8 w-8 text-purple-600" />
-                        <div className="ml-4">
-                            <p className="text-sm font-medium text-gray-600">Active Today</p>
-                            <p className="text-2xl font-semibold text-gray-900">
-                                {users.filter(user =>
-                                    new Date(user.last_login).toDateString() === new Date().toDateString()
-                                ).length}
-                            </p>
-                        </div>
-                    </div>
+            {/* User Management Section */}           
+            <div className="flex justify-between items-center">
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-900">All Users</h2>
+                    <p className="mt-1 text-sm text-gray-500">Manage user roles and monitor account activity</p>
                 </div>
             </div>
 
-            {/* User Management Section */}
+            {roleUpdateError && (
+                <div className="mx-6 mt-4 flex items-center p-4 bg-red-50 text-red-700 rounded-md">
+                    <AlertTriangle className="h-5 w-5 mr-2" />
+                    {roleUpdateError}
+                </div>
+            )}
+
+            {/* Search Bar */}
+            <div className='relative'>
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                    type="text"
+                    placeholder="Search users..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 py-2 w-full rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+            </div>
+            
             <div className="bg-white rounded-lg shadow">
-                <div className="p-6 border-b border-gray-200">
-                    <h2 className="text-lg font-medium text-gray-900">User Management</h2>
-                    <p className="mt-1 text-sm text-gray-500">
-                        Manage user roles and monitor account activity
-                    </p>
-                </div>
-
-                {roleUpdateError && (
-                    <div className="mx-6 mt-4 flex items-center p-4 bg-red-50 text-red-700 rounded-md">
-                        <AlertTriangle className="h-5 w-5 mr-2" />
-                        {roleUpdateError}
-                    </div>
-                )}
-
-                {/* Search Bar */}
-                <div className="p-4">
-                    <input
-                        type="text"
-                        placeholder="Search users..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                </div>
-
                 {/* Users Table */}
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">

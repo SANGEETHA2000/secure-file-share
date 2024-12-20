@@ -1,34 +1,68 @@
-import React, { useCallback,  useState } from 'react';
-import {  useAppSelector } from '../../hooks/redux.ts';
-import { UploadCloud, X, Loader } from 'lucide-react';
+import React, { useCallback, useState } from 'react';
+import { useAppSelector } from '../../hooks/redux.ts';
+import { UploadCloud, X, Loader, AlertCircle } from 'lucide-react';
+import { encryptFile } from '../../utils/encryption.ts';
 
 interface FileUploadProps {
     onFileSelect: (file: File | null) => void;
     selectedFile: File | null;
 }
 
+// Define allowed file types and max file size (50MB)
+const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'text/plain'];
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
+
 const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, selectedFile }) => {
     const { loading, uploadProgress } = useAppSelector(state => state.files);
     const [dragActive, setDragActive] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    // Update the file selection handlers to notify parent component
-    const handleFileSelect = (file: File | null) => {
-        onFileSelect(file);  // Notify parent component
+    const processFile = async (file: File) => {
+        try {
+            setError(null);
+
+            // Validate file type
+            if (!ALLOWED_TYPES.includes(file.type)) {
+                setError('Invalid file type. Allowed types: PDF, JPEG, PNG, TXT');
+                onFileSelect(null);
+                return;
+            }
+
+            // Validate file size
+            if (file.size > MAX_FILE_SIZE) {
+                setError('File size too large. Maximum size: 50MB');
+                onFileSelect(null);
+                return;
+            }
+
+            // Client-side encryption
+            const { encryptedFile, key } = await encryptFile(file);
+
+            // Store the encryption key with the file object
+            const fileWithKey = new File([encryptedFile], file.name, { type: file.type });
+            (fileWithKey as any).clientKey = key;
+
+            onFileSelect(fileWithKey);
+        } catch (error) {
+            console.error('File processing failed:', error);
+            setError('Failed to process file. Please try again.');
+            onFileSelect(null);
+        }
     };
 
     // Handle files being dropped
-    const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    const handleDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
         setDragActive(false);
 
         const files = Array.from(e.dataTransfer.files);
         if (files.length > 0) {
-            handleFileSelect(files[0]);
+            await processFile(files[0]);
         }
     }, [onFileSelect]);
 
-    // Handle drag events to show visual feedback
+    // Handle drag events
     const handleDrag = useCallback((e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
@@ -39,21 +73,22 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, selectedFile }) =
         }
     }, []);
 
-    // Handle file selection through the file input
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Handle file selection through input
+    const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         e.preventDefault();
         if (e.target.files && e.target.files[0]) {
-            handleFileSelect(e.target.files[0]);
+            await processFile(e.target.files[0]);
         }
     };
 
     // Clear selected file
     const handleClear = () => {
+        setError(null);
         onFileSelect(null);
     };
 
     return (
-        <div className="w-full">
+        <div className="w-full px-6">
             {/* Upload Container */}
             <div
                 className={`relative border-2 border-dashed rounded-lg p-6 
@@ -75,7 +110,10 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, selectedFile }) =
                             <span className="font-semibold">Click to upload</span> or drag and drop
                         </p>
                         <p className="text-xs text-gray-500">
-                            Files will be encrypted before upload
+                            Files will be encrypted before upload (Max size: 50MB)
+                        </p>
+                        <p className="text-xs text-gray-500">
+                            Supported formats: PDF, JPEG, PNG, TXT
                         </p>
                     </div>
 
@@ -86,6 +124,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, selectedFile }) =
                         className="hidden"
                         id="file-upload"
                         disabled={loading}
+                        accept={ALLOWED_TYPES.join(',')}
                     />
 
                     {/* Upload Button */}
@@ -102,6 +141,16 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, selectedFile }) =
                         Select File
                     </label>
                 </div>
+
+                {/* Error Message */}
+                {error && (
+                    <div className="mt-4 p-4 bg-red-50 rounded-md">
+                        <div className="flex items-center">
+                            <AlertCircle className="h-5 w-5 text-red-400 mr-2" />
+                            <span className="text-sm text-red-800">{error}</span>
+                        </div>
+                    </div>
+                )}
 
                 {/* Selected File Display */}
                 {selectedFile && (

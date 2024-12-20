@@ -41,6 +41,7 @@ class FileViewSet(viewsets.ModelViewSet):
         Handle file upload with encryption.
         """
         uploaded_file = self.request.FILES['file']
+        client_key = self.request.POST.get('client_key')
         
         # Generate a unique encryption key for this file
         encryption_key = Fernet.generate_key()
@@ -62,15 +63,14 @@ class FileViewSet(viewsets.ModelViewSet):
         file_instance = serializer.save()
         file_instance.name = encrypted_filename
         file_instance.encryption_key_id = encryption_key.decode()
+        file_instance.client_key = client_key
         file_instance.save()
 
     @action(detail=True, methods=['get'], permission_classes=[IsFileOwnerOrSharedWith])
     def download(self, request, pk=None):
-        """
-        Handle secure file download with decryption.
-        """
+        """Handle secure file download with decryption."""
         file_obj = self.get_object()
-
+        print(file_obj.client_key)
         try:
             # Get the encryption key and initialize Fernet
             fernet = Fernet(file_obj.encryption_key_id.encode())
@@ -88,11 +88,21 @@ class FileViewSet(viewsets.ModelViewSet):
                 decrypted_content,
                 content_type=file_obj.mime_type or 'application/octet-stream'
             )
+            
+            # Set required headers
             response['Content-Disposition'] = f'attachment; filename="{file_obj.original_name}"'
+            response['Access-Control-Allow-Origin'] = 'http://localhost:3000'
+            response['Access-Control-Allow-Credentials'] = 'true'
+            response['X-Client-Key'] = file_obj.client_key
+            
+            if request.method == 'OPTIONS':
+                response['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+                response['Access-Control-Allow-Headers'] = 'Authorization, Content-Type'
+                
             return response
-        
+            
         except Exception as e:
-            print(f"Download error: {str(e)}")  # For debugging
+            print(f"Download error: {str(e)}")
             return Response(
                 {'detail': 'Failed to download file.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

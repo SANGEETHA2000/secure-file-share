@@ -4,6 +4,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 import pyotp
 
 User = get_user_model()
@@ -27,6 +28,10 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                     'require_mfa': True,
                     'user_id': user.id
                 })
+            
+            # Update last_login for non-MFA users
+            user.last_login = timezone.now()
+            user.save(update_fields=['last_login'])
             
         return response
 
@@ -56,6 +61,10 @@ class VerifyMFAView(views.APIView):
 
         totp = pyotp.TOTP(user.mfa_secret)
         if totp.verify(token):
+            # Update last_login timestamp
+            user.last_login = timezone.now()
+            user.save(update_fields=['last_login'])
+            
             # Generate tokens
             refresh = RefreshToken.for_user(user)
             return Response({

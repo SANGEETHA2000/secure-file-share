@@ -20,6 +20,7 @@ class User(AbstractUser):
     mfa_secret = models.CharField(
         max_length=32,
         blank=True,
+        null=True,
         help_text="Secret key for TOTP-based multi-factor authentication"
     )
     mfa_enabled = models.BooleanField(

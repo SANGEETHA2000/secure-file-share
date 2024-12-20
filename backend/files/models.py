@@ -34,6 +34,12 @@ class File(models.Model):
         max_length=64,
         help_text="Reference to the encryption key used for this file"
     )
+    client_key = models.CharField(
+        max_length=512,
+        null=True,
+        blank=True,
+        help_text="Client-side encryption key"
+    )
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,  # References User model from users app
         on_delete=models.CASCADE,

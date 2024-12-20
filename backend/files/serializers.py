@@ -23,6 +23,7 @@ class FileSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # Extract the file from validated data
         upload_file = validated_data.pop('file')
+        client_key = validated_data.pop('client_key', None)
         
         # Create the file instance with the remaining data
         file_instance = File.objects.create(
@@ -31,7 +32,8 @@ class FileSerializer(serializers.ModelSerializer):
             mime_type=upload_file.content_type,
             size=upload_file.size,
             owner=self.context['request'].user,
-            encryption_key_id='temp-key'  # This will be overwritten by the view
+            encryption_key_id='temp-key',  # This will be overwritten by the view
+            client_key=client_key
         )
 
         return file_instance

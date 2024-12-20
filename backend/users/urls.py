@@ -7,7 +7,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 # Create a router and register our viewsets with it
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
-router.register(r'admin', AdminViewSet)
+router.register(r'admin', AdminViewSet, basename='admin')
 
 # The API URLs are determined automatically by the router
 urlpatterns = [

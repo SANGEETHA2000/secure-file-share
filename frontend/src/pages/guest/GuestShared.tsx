@@ -12,7 +12,7 @@ const GuestShared: React.FC = () => {
     }, [dispatch]);
 
     return (
-        <div className="space-y-6">
+        <>
             <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
                 <div className="flex">
                     <AlertTriangle className="h-5 w-5 text-yellow-400" />
@@ -21,10 +21,10 @@ const GuestShared: React.FC = () => {
                             Guest access: You can only view and download shared files.
                         </p>
                     </div>
-                </div>
+                </div>               
             </div>
             <SharedFileList />
-        </div>
+        </>
     );
 };
 

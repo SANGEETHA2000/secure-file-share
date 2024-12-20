@@ -107,6 +107,7 @@ class UserViewSet(viewsets.ModelViewSet):
         Disable MFA for the current user
         """
         user = request.user
+        print(user.mfa_enabled, user.mfa_secret)
         if not user.mfa_enabled:
             return Response(
                 {'detail': 'MFA is not enabled'},
@@ -127,6 +128,44 @@ class UserViewSet(viewsets.ModelViewSet):
         user.save()
         
         return Response({'detail': 'MFA disabled successfully'})
+    
+    @action(detail=False, methods=['post'])
+    def change_password(self, request):
+        """
+        Change the current user's password
+        """
+        user = request.user
+
+        # Get the required data from the request
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+        confirm_new_password = request.data.get('confirm_new_password')
+
+        # Validate the data
+        if not current_password or not new_password or not confirm_new_password:
+            return Response(
+                {'detail': 'Current password, new password, and confirm new password are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if new_password != confirm_new_password:
+            return Response(
+                {'detail': 'New password and confirm new password do not match'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if the current password is correct
+        if not user.check_password(current_password):
+            return Response(
+                {'detail': 'Current password is incorrect'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Update the user's password
+        user.set_password(new_password)
+        user.save()
+
+        return Response({'detail': 'Password changed successfully'})
     
 class AdminViewSet(viewsets.ModelViewSet):
     """

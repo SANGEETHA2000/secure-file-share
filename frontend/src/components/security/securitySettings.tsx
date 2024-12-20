@@ -1,38 +1,35 @@
 import React, { useState } from 'react';
-import { useAppDispatch, useAppSelector } from '../../hooks/redux.ts';
+import { useAppSelector } from '../../hooks/redux.ts';
 import { Shield, Lock, QrCode } from 'lucide-react';
 import MFASetup from './MFASetup.tsx';
 import DashboardLayout from '../layout/DashboardLayout.tsx';
-import { disableMFA } from '../../store/slices/authSlice.ts';
+import ChangePasswordForm from './ChangePassword.tsx';
+import DisableMFAForm from './DisableMFA.tsx';
 
 // The SecuritySettings component provides a central place for users to manage their security preferences,
 // with a primary focus on MFA setup and management.
 const SecuritySettings = () => {
-    const dispatch = useAppDispatch();
     const { user } = useAppSelector(state => state.auth);
     const [showMFASetup, setShowMFASetup] = useState(false);
-
+    const [showChangePassword, setShowChangePassword] = useState(false);
+    const [showDisableMFA, setShowDisableMFA] = useState(false);
+    
     // If the MFA setup modal is open, we show that instead of the main security settings
     if (showMFASetup) {
         return <MFASetup onClose={() => setShowMFASetup(false)} />;
     }
-
-    const handleDisableMFA = async () => {
-        const password = prompt('Please enter your password to disable MFA');
-        if (!password) return;
     
-        try {
-            await dispatch(disableMFA(password)).unwrap();
-            // Show success message
-        } catch (error) {
-            // Show error message
-            console.error('Failed to disable MFA:', error);
-        }
-    };
+    if (showChangePassword) {
+        return <ChangePasswordForm onClose={() => setShowChangePassword(false)} />;
+    }
+
+    if (showDisableMFA) {
+        return <DisableMFAForm onClose={() => setShowDisableMFA(false)} />;
+    }
 
     return (
         <DashboardLayout>
-            <div className="space-y-6">
+            <div className="space-y-6 p-6">
                 {/* Page Header */}
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Security Settings</h1>
@@ -64,7 +61,7 @@ const SecuritySettings = () => {
                                             </span>
                                             <button
                                                 type="button"
-                                                onClick={() => setShowMFASetup(true)}
+                                                onClick={() => setShowDisableMFA(true)}
                                                 className="text-sm text-red-600 hover:text-red-500"
                                             >
                                                 Disable 2FA
@@ -73,7 +70,7 @@ const SecuritySettings = () => {
                                     ) : (
                                         <button
                                             type="button"
-                                            onClick={handleDisableMFA}
+                                            onClick={() => setShowMFASetup(true)}
                                             className="inline-flex items-center px-4 py-2 border border-transparent 
                                                     text-sm font-medium rounded-md shadow-sm text-white 
                                                     bg-indigo-600 hover:bg-indigo-700 focus:outline-none 
@@ -106,6 +103,7 @@ const SecuritySettings = () => {
                                 <div className="mt-4">
                                     <button
                                         type="button"
+                                        onClick={() => setShowChangePassword(true)}
                                         className="inline-flex items-center px-4 py-2 border border-gray-300 
                                                 shadow-sm text-sm font-medium rounded-md text-gray-700 
                                                 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 

@@ -17,6 +17,7 @@ interface File {
 // The FileState interface defines what our file management system keeps track of
 interface FileState {
     files: File[];
+    adminFiles: File[];
     sharedFiles: File[];
     loading: boolean;
     error: string | null;
@@ -49,8 +50,16 @@ interface ShareLink {
     };
 }
 
+interface DownloadResponse {
+    data: Blob;
+    clientKey?: string;
+    filename: string;
+    contentType: string;
+}
+
 const initialState: FileState = {
     files: [],
+    adminFiles: [],
     sharedFiles: [],
     loading: false,
     error: null,
@@ -66,16 +75,20 @@ export const uploadFile = createAsyncThunk(
     'files/upload',
     async (file: globalThis.File, { rejectWithValue, dispatch }) => {
         try {
-            // Create a FormData object to send the file
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('original_name', file.name); 
+            formData.append('original_name', file.name);
+
+            // Add client-side encryption key
+            const clientKey = (file as any).clientKey;
+            if (clientKey) {
+                formData.append('client_key', clientKey);
+            }
 
             const response = await api.post('/files/', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 },
-                // Track upload progress
                 onUploadProgress: (progressEvent) => {
                     const progress = Math.round(
                         (progressEvent.loaded * 100) / (progressEvent.total || 100)
@@ -118,50 +131,43 @@ export const deleteFile = createAsyncThunk(
 );
 
 // Add this new action to handle file downloads
-export const downloadFile = createAsyncThunk(
+export const downloadFile = createAsyncThunk<DownloadResponse, string>(
     'files/download',
     async (fileId: string, { rejectWithValue }) => {
         try {
-            // We use axios api with responseType blob to handle binary data
             const response = await api.get(`/files/${fileId}/download/`, {
                 responseType: 'blob',
-                // Track download progress if we want to show it
+                headers: {
+                    'Accept': '*/*'
+                },
                 onDownloadProgress: (progressEvent) => {
                     const progress = Math.round(
                         (progressEvent.loaded * 100) / (progressEvent.total || 100)
                     );
-                    console.log(progress);
-                    // We could dispatch an action here to update progress in the UI
+                    console.log('Download progress:', progress);
                 }
             });
-
-            // Create a URL for the downloaded blob
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            
-            // Get the filename from the response headers if available
-            const contentDisposition = response.headers['content-disposition'];
-            let filename = 'downloaded-file';
-            if (contentDisposition) {
-                const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-                if (filenameMatch) {
-                    filename = filenameMatch[1];
-                }
+            // Check if response is ok
+            if (!response.data) {
+                throw new Error('No data received');
             }
 
-            // Create a temporary link element to trigger the download
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', filename);
-            document.body.appendChild(link);
-            link.click();
-            
-            // Clean up
-            link.remove();
-            window.URL.revokeObjectURL(url);
-
-            return fileId;
+            return {
+                data: response.data,
+                clientKey: response.headers?.['x-client-key'],
+                filename: response.headers?.['content-disposition']?.match(/filename="(.+?)"/)?.[1] || 'downloaded-file',
+                contentType: response.headers?.['content-type'] || 'application/octet-stream'
+            };
         } catch (error: any) {
-            return rejectWithValue(error.response?.data?.detail || 'Download failed');
+            console.error('Download error:', error);
+            if (error.response?.status === 204) {
+                return rejectWithValue('File not found or no content');
+            }
+            return rejectWithValue(
+                error.response?.data?.detail || 
+                error.message || 
+                'Download failed'
+            );
         }
     }
 );
@@ -338,7 +344,7 @@ const fileSlice = createSlice({
             })
             .addCase(fetchAdminFiles.fulfilled, (state, action) => {
                 state.loading = false;
-                state.files = action.payload;
+                state.adminFiles = action.payload;
             })
             .addCase(fetchAdminFiles.rejected, (state, action) => {
                 state.loading = false;

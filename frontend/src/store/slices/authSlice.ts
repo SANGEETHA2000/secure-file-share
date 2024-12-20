@@ -47,6 +47,12 @@ interface RegisterData {
     role?: UserRole;
 }
 
+interface ChangePasswordFormData {
+    current_password: string;
+    new_password: string;
+    confirm_new_password: string;
+}
+
 const initialState: AuthState = {
     user: JSON.parse(localStorage.getItem('user') || 'null'),
     token: localStorage.getItem('token'),
@@ -200,6 +206,22 @@ export const disableMFA = createAsyncThunk(
     }
 );
 
+export const changePassword = createAsyncThunk(
+    'auth/changePassword',
+    async (formData: ChangePasswordFormData, { rejectWithValue }) => {
+        try {
+            const response = await api.post('/users/change_password/', formData);
+            return response.data;
+        } catch (error) {
+            if (error.response && error.response.data.message) {
+                return rejectWithValue(error.response.data.message);
+            } else {
+                return rejectWithValue(error.message);
+            }
+        }
+    }
+);
+
 const authSlice = createSlice({
     name: 'auth',
     initialState,
@@ -304,6 +326,9 @@ const authSlice = createSlice({
             .addCase(verifyMFASetup.fulfilled, (state) => {
                 state.loading = false;
                 state.mfa_enabled = true;
+                if (state.user) {
+                    state.user.mfa_enabled = true;
+                }
             })
             .addCase(verifyMFASetup.rejected, (state, action) => {
                 state.loading = false;
@@ -311,11 +336,33 @@ const authSlice = createSlice({
             })
 
             // MFA disable cases
+            .addCase(disableMFA.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
             .addCase(disableMFA.fulfilled, (state) => {
-                state.user = {
-                    ...state.user!,
-                    mfa_enabled: false
-                };
+                state.loading = false;
+                if (state.user) {
+                    state.user.mfa_enabled = false;
+                }
+            })
+            .addCase(disableMFA.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload as string;
+            })
+
+            // Change password cases
+            .addCase(changePassword.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(changePassword.fulfilled, (state) => {
+                state.loading = false;
+                state.error = null;
+            })
+            .addCase(changePassword.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload as string;
             });
     }
 });

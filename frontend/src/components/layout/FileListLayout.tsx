@@ -44,7 +44,7 @@ const FileListLayout: React.FC<FileListLayoutProps> = ({
     };
 
     return (
-        <div className="space-y-4">
+        <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
@@ -115,15 +115,8 @@ const FileListLayout: React.FC<FileListLayoutProps> = ({
                                         <span className="truncate">{file.original_name}</span>
                                     </div>
                                     {showUploadedBy && (
-                                        <div className="col-span-2 flex items-center">
-                                            <div>
-                                                <div className="text-sm font-medium text-gray-900">
-                                                    {file.uploaded_by?.username}
-                                                </div>
-                                                <div className="text-sm text-gray-500">
-                                                    {file.uploaded_by?.email}
-                                                </div>
-                                            </div>
+                                        <div className="col-span-2 text-sm text-gray-500 flex items-center">
+                                            {file.owner_name}
                                         </div>
                                     )}
                                     <div className="col-span-3 text-sm text-gray-500 flex items-center">

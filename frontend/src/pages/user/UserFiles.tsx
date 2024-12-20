@@ -26,9 +26,15 @@ const UserFiles: React.FC = () => {
     };
 
     return (
-        <div className="space-y-6">
+        <>
             {/* Upload Section */}
-            <div className="flex justify-end">
+            <div className="flex justify-between p-6">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h2 className="text-2xl font-bold text-gray-900">Upload Files</h2>
+                        <p className="mt-1 text-sm text-gray-500">Store your files securely</p>
+                    </div>
+                </div>
                 <button
                     onClick={handleFileUpload}
                     disabled={!selectedFile || loading}
@@ -54,7 +60,7 @@ const UserFiles: React.FC = () => {
 
             <FileUpload onFileSelect={setSelectedFile} selectedFile={selectedFile} />
             <UserFileList />
-        </div>
+        </>
     );
 };
 
