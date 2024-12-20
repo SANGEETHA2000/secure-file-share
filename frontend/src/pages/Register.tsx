@@ -5,32 +5,45 @@ import { register } from '../store/slices/authSlice.ts';
 import { Loader, Lock, UserPlus } from 'lucide-react';
 import { LogoLayout } from '../components/layout/LogoLayout.tsx';
 
+type UserRole = 'ADMIN' | 'USER' | 'GUEST';
+
+interface RegisterFormData {
+    username: string;
+    email: string;
+    password: string;
+    password_confirm: string;
+    first_name: string;
+    last_name: string;
+    role: UserRole;
+}
+
 const Register = () => {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const { loading, error } = useAppSelector((state) => state.auth);
 
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<RegisterFormData>({
         username: '',
         email: '',
         password: '',
         password_confirm: '',
         first_name: '',
         last_name: '',
+        role: 'USER'
     });
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const result = await dispatch(register(formData));
         if (register.fulfilled.match(result)) {
-            // Registration successful - redirect to login
             navigate('/login', { 
                 state: { message: 'Registration successful! Please log in.' }
             });
@@ -97,7 +110,18 @@ const Register = () => {
                             className={`input-field ${error ? 'input-error' : ''}`}
                             value={formData.email}
                             onChange={handleChange}
-                            />
+                        />
+                        
+                        <select
+                            id="role"
+                            name="role"
+                            value={formData.role}
+                            onChange={handleChange}
+                            className="input-field"
+                        >
+                            <option value="USER">Regular User</option>
+                            <option value="GUEST">Guest User</option>
+                        </select>
 
                         <input
                             id="password"

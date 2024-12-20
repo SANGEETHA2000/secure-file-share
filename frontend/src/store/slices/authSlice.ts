@@ -1,25 +1,29 @@
+// src/store/slices/authSlice.ts
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../api/axios.ts';
 
-interface AuthState {
-    user: any | null;        // Stores user information when logged in
-    token: string | null;    // Stores the JWT access token
-    isAuthenticated: boolean; // Tracks if user is logged in
-    requiresMFA: boolean;    // Tracks if MFA verification is needed
-    tempUserId: string | null; // Temporarily stores user ID during MFA process
-    loading: boolean;        // Tracks if an auth operation is in progress
-    error: string | null;    // Stores any error messages
-    mfa_enabled: boolean;    // Tracks if MFA is enabled
-}
+// Define role type for better type safety
+type UserRole = 'ADMIN' | 'USER' | 'GUEST';
 
 interface User {
     id: string;
     username: string;
     email: string;
-    role: string;
+    role: UserRole;
     mfa_enabled: boolean;
     first_name: string;
     last_name: string;
+}
+
+interface AuthState {
+    user: User | null;
+    token: string | null;
+    isAuthenticated: boolean;
+    requiresMFA: boolean;
+    tempUserId: string | null;
+    loading: boolean;
+    error: string | null;
+    mfa_enabled: boolean;
 }
 
 interface LoginSuccessResponse {
@@ -33,10 +37,19 @@ interface LoginMFARequiredResponse {
     userId: string;
 }
 
-// Set up the initial state
+interface RegisterData {
+    username: string;
+    email: string;
+    password: string;
+    password_confirm: string;
+    first_name: string;
+    last_name: string;
+    role?: UserRole;
+}
+
 const initialState: AuthState = {
     user: JSON.parse(localStorage.getItem('user') || 'null'),
-    token: localStorage.getItem('token'), // Check if we have a saved token
+    token: localStorage.getItem('token'),
     isAuthenticated: !!localStorage.getItem('token'),
     requiresMFA: false,
     tempUserId: null,
@@ -45,13 +58,12 @@ const initialState: AuthState = {
     mfa_enabled: false
 };
 
-// Create an async action for logging in
 export const login = createAsyncThunk(
     'auth/login',
     async (credentials: { username: string; password: string }, { rejectWithValue }) => {
         try {
             const response = await api.post('/auth/login/', credentials);
-            // Handle MFA requirement
+            
             if (response.data.require_mfa) {
                 return {
                     requiresMFA: true,
@@ -59,7 +71,6 @@ export const login = createAsyncThunk(
                 } as LoginMFARequiredResponse;
             }
 
-            // If no MFA needed, store the token and return success
             localStorage.setItem('token', response.data.access);
             try {
                 const userResponse = await api.get('/users/me/');
@@ -74,14 +85,46 @@ export const login = createAsyncThunk(
                 console.error('Failed to fetch user profile:', error);
                 throw error;
             }
-            
         } catch (error: any) {
-            return rejectWithValue(error.response?.data?.detail || 'Login failed');
+            return rejectWithValue(
+                error.response?.data?.detail || 
+                'Invalid credentials. Please try again.'
+            );
         }
     }
 );
 
-// Create an async action for MFA verification
+export const register = createAsyncThunk(
+    'auth/register',
+    async (userData: RegisterData, { rejectWithValue }) => {
+        try {
+            // If role is not provided, default to 'USER'
+            const dataWithRole = {
+                ...userData,
+                role: userData.role || 'USER'
+            };
+            
+            const response = await api.post('/users/', dataWithRole);
+            return response.data;
+        } catch (error: any) {
+            // Handle specific error cases
+            if (error.response?.data) {
+                const errorData = error.response.data;
+                if (errorData.username) {
+                    return rejectWithValue('Username is already taken');
+                }
+                if (errorData.email) {
+                    return rejectWithValue('Email is already in use');
+                }
+                if (errorData.password) {
+                    return rejectWithValue(errorData.password[0]);
+                }
+            }
+            return rejectWithValue('Registration failed. Please try again.');
+        }
+    }
+);
+
 export const verifyMFA = createAsyncThunk(
     'auth/verifyMFA',
     async ({ userId, token }: { userId: string; token: string }, { rejectWithValue }) => {
@@ -92,17 +135,22 @@ export const verifyMFA = createAsyncThunk(
             });
             
             localStorage.setItem('token', response.data.access);
+
+            // Fetch user data after successful MFA verification
+            const userResponse = await api.get('/users/me/');
+            const userData = userResponse.data;
+            localStorage.setItem('user', JSON.stringify(userData));
+
             return {
-                token: response.data.access
+                token: response.data.access,
+                user: userData
             };
         } catch (error: any) {
-            return rejectWithValue(error.response?.data?.detail || 'MFA verification failed');
+            return rejectWithValue('Invalid MFA code. Please try again.');
         }
     }
 );
 
-// Create an async action to fetch the user's profile
-// This runs after successful authentication to get user details
 export const fetchUserProfile = createAsyncThunk(
     'auth/fetchProfile',
     async (_, { rejectWithValue }) => {
@@ -111,29 +159,7 @@ export const fetchUserProfile = createAsyncThunk(
             localStorage.setItem('user', JSON.stringify(response.data));
             return response.data;
         } catch (error: any) {
-            return rejectWithValue(error.response?.data?.detail || 'Failed to fetch profile');
-        }
-    }
-);
-
-export const register = createAsyncThunk(
-    'auth/register',
-    async (userData: {
-        username: string;
-        email: string;
-        password: string;
-        password_confirm: string;
-        first_name: string;
-        last_name: string;
-    }, { rejectWithValue }) => {
-        try {
-            const response = await api.post('/users/', userData);
-            return response.data;
-        } catch (error: any) {
-            return rejectWithValue(
-                error.response?.data?.detail || 
-                'Registration failed. Please try again.'
-            );
+            return rejectWithValue('Failed to fetch profile');
         }
     }
 );
@@ -143,15 +169,13 @@ export const enableMFA = createAsyncThunk(
     async (_, { rejectWithValue }) => {
         try {
             const response = await api.post('/users/enable_mfa/');
-            console.log(response)
             return response.data;
         } catch (error: any) {
-            return rejectWithValue(error.response?.data?.detail || 'Failed to enable MFA');
+            return rejectWithValue('Failed to enable MFA');
         }
     }
 );
 
-// For verifying during MFA setup
 export const verifyMFASetup = createAsyncThunk(
     'auth/verifyMFASetup',
     async ({ token }: { token: string }, { rejectWithValue }) => {
@@ -159,45 +183,59 @@ export const verifyMFASetup = createAsyncThunk(
             const response = await api.post('/users/verify_mfa_setup/', { token });
             return response.data;
         } catch (error: any) {
-            return rejectWithValue(error.response?.data?.detail || 'MFA setup verification failed');
+            return rejectWithValue('Invalid verification code');
         }
     }
 );
 
-// Create the auth slice - this defines how our state can be modified
+export const disableMFA = createAsyncThunk(
+    'auth/disableMFA',
+    async (password: string, { rejectWithValue }) => {
+        try {
+            const response = await api.post('/users/disable_mfa/', { password });
+            return response.data;
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.detail || 'Failed to disable MFA');
+        }
+    }
+);
+
 const authSlice = createSlice({
     name: 'auth',
     initialState,
     reducers: {
-        // Add a logout action to clear everything
         logout: (state) => {
             localStorage.removeItem('token');
-            state.user = null;
-            state.token = null;
-            state.isAuthenticated = false;
-            state.tempUserId = null;
             localStorage.removeItem('user');
+            return {
+                ...initialState,
+                user: null,
+                token: null,
+                isAuthenticated: false
+            };
         },
-        // Add other synchronous actions here if needed
+        clearError: (state) => {
+            state.error = null;
+        }
     },
     extraReducers: (builder) => {
         builder
-            // Handle login states
+            // Login cases
             .addCase(login.pending, (state) => {
                 state.loading = true;
                 state.error = null;
             })
             .addCase(login.fulfilled, (state, action) => {
                 state.loading = false;
-                if (action.payload.requiresMFA) {
+                if ('requiresMFA' in action.payload && action.payload.requiresMFA) {
                     state.requiresMFA = true;
                     state.tempUserId = action.payload.userId;
                 } else {
                     state.token = action.payload.token;
                     state.user = action.payload.user;
                     state.isAuthenticated = true;
-                    localStorage.setItem('token', action.payload.token);
-                    localStorage.setItem('user', JSON.stringify(action.payload.user));
+                    state.requiresMFA = false;
+                    state.mfa_enabled = action.payload.user.mfa_enabled;
                 }
             })
             .addCase(login.rejected, (state, action) => {
@@ -205,39 +243,54 @@ const authSlice = createSlice({
                 state.error = action.payload as string;
             })
 
-            // Handle MFA verification states
+            // MFA verification cases
+            .addCase(verifyMFA.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
             .addCase(verifyMFA.fulfilled, (state, action) => {
+                state.loading = false;
                 state.token = action.payload.token;
+                state.user = action.payload.user;
                 state.isAuthenticated = true;
                 state.requiresMFA = false;
                 state.tempUserId = null;
+                state.mfa_enabled = action.payload.user.mfa_enabled;
+            })
+            .addCase(verifyMFA.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload as string;
             })
 
-            // Handle profile fetch states
-            .addCase(fetchUserProfile.fulfilled, (state, action) => {
-                state.user = action.payload;
-            })
-
+            // Register cases
             .addCase(register.pending, (state) => {
                 state.loading = true;
                 state.error = null;
             })
             .addCase(register.fulfilled, (state) => {
                 state.loading = false;
-                // We don't set isAuthenticated here since we'll require them to login
             })
             .addCase(register.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload as string;
             })
-            
+
+            // Profile fetch cases
+            .addCase(fetchUserProfile.fulfilled, (state, action) => {
+                state.user = action.payload;
+                state.mfa_enabled = action.payload.mfa_enabled;
+            })
+            .addCase(fetchUserProfile.rejected, (state, action) => {
+                state.error = action.payload as string;
+            })
+
+            // MFA enable/setup cases
             .addCase(enableMFA.pending, (state) => {
                 state.loading = true;
                 state.error = null;
             })
-            .addCase(enableMFA.fulfilled, (state, action) => {
+            .addCase(enableMFA.fulfilled, (state) => {
                 state.loading = false;
-                // We don't set mfa_enabled yet because it needs verification
             })
             .addCase(enableMFA.rejected, (state, action) => {
                 state.loading = false;
@@ -255,10 +308,17 @@ const authSlice = createSlice({
             .addCase(verifyMFASetup.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload as string;
+            })
+
+            // MFA disable cases
+            .addCase(disableMFA.fulfilled, (state) => {
+                state.user = {
+                    ...state.user!,
+                    mfa_enabled: false
+                };
             });
     }
 });
 
-// Export our actions and reducer
-export const { logout } = authSlice.actions;
+export const { logout, clearError } = authSlice.actions;
 export default authSlice.reducer;

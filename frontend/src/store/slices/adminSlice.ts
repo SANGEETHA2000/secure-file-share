@@ -44,7 +44,7 @@ export const updateUserRole = createAsyncThunk(
     'admin/updateUserRole',
     async ({ userId, role }: { userId: string; role: string }, { rejectWithValue }) => {
         try {
-            const response = await api.patch(`/admin/users/${userId}/`, { role });
+            const response = await api.patch(`/admin/${userId}/update_role/`, { role });
             return response.data;
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.detail || 'Failed to update user role');

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux.ts';
 import { QrCode, Smartphone, XCircle } from 'lucide-react';
 import { enableMFA, verifyMFASetup } from '../../store/slices/authSlice.ts';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface MFASetupProps {
     onClose: () => void;
@@ -22,11 +23,7 @@ const MFASetup: React.FC<MFASetupProps> = ({ onClose }) => {
     const handleStartSetup = async () => {
         try {
             const result = await dispatch(enableMFA()).unwrap();
-            const encodedSecret = encodeURIComponent(result.secret);
-            const provisioningUri = result.provisioning_uri //`otpauth://totp/Secure%20File%20Share:${encodedSecret}?secret=${encodedSecret}&issuer=Secure%20File%20Share`;
-            // const provisioningUri = 'otpauth://totp/Secure%20File%20Share:sangeetha2000.vd%40gmail.com:?secret=L36GQTG4BEVE55OTASPSICIROPAUQSVH&issuer=Secure%20File%20Share'
-            console.log(provisioningUri)
-            setQrCode(provisioningUri);
+            setQrCode(result.provisioning_uri);
             setSecret(result.secret);
             setStep('scan');
         } catch (error) {
@@ -101,10 +98,10 @@ const MFASetup: React.FC<MFASetupProps> = ({ onClose }) => {
                         </div>
                         
                         <div className="flex justify-center">
-                            <img
-                                src={qrCode}
-                                alt="QR Code for 2FA"
-                                className="h-48 w-48"
+                            <QRCodeSVG 
+                                value={qrCode}
+                                size={256}
+                                level="H"
                             />
                         </div>
 

@@ -1,4 +1,3 @@
-// src/utils/encryption.ts
 export async function encryptFile(file: File): Promise<{ encryptedFile: Blob; key: string }> {
     // Generate a random encryption key
     const key = await window.crypto.subtle.generateKey(

@@ -1,65 +1,116 @@
+// src/components/layout/DashboardLayout.tsx
 import React, { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux.ts';
-import { FolderIcon, ShareIcon, UsersIcon, LogOutIcon, Shield } from 'lucide-react';
+import { FolderIcon, ShareIcon, UsersIcon, LogOutIcon, Shield, LucideIcon } from 'lucide-react';
 import { fetchUserProfile, logout } from '../../store/slices/authSlice.ts';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
+interface NavigationItem {
+  name: string;
+  icon: LucideIcon;
+  href?: string;
+  onClick?: () => void;
+}
+
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-
-  const handleLogout = () => {
-    // Dispatch logout action to clear Redux state
-    dispatch(logout());
-    // Clear any stored authentication data
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    // Navigate to login page
-    navigate('/login');
-  };
+  const location = useLocation();
+  const currentPath = location.pathname;
   const { user, loading } = useAppSelector(state => state.auth);
 
+  const isActivePath = (path: string) => {
+    if (path === '/admin' && currentPath.startsWith('/admin')) {
+        return true;
+    }
+    return currentPath === path;
+  };
+
+  const getLinkClassName = (path: string | undefined) => {
+      const baseClasses = "group w-full flex items-center rounded-md px-3 py-2 text-sm font-medium";
+      return `${baseClasses} ${
+          path && isActivePath(path)
+              ? 'bg-indigo-50 text-indigo-600'
+              : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
+      }`;
+  };
+
+  const handleLogout = () => {
+    dispatch(logout());
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
+
   useEffect(() => {
-      if (!user && localStorage.getItem('token')) {
-          dispatch(fetchUserProfile());
-      }
+    if (!user && localStorage.getItem('token')) {
+      dispatch(fetchUserProfile());
+    }
   }, [dispatch, user]);
 
-  const navigation = [
+  // Role-based navigation configurations
+  const adminNavigation: NavigationItem[] = [
+    { name: 'Users', icon: UsersIcon, href: '/admin/users' },
+    { name: 'Files', icon: FolderIcon, href: '/admin/files' },
+    { name: 'Security Settings', icon: Shield, href: '/security' },
+    { name: 'Logout', icon: LogOutIcon, onClick: handleLogout },
+  ];
+
+  const userNavigation: NavigationItem[] = [
     { name: 'My Files', icon: FolderIcon, href: '/dashboard' },
     { name: 'Shared Files', icon: ShareIcon, href: '/shared' },
     { name: 'Security Settings', icon: Shield, href: '/security' },
-    { name: 'Logout', icon: LogOutIcon, onClick: handleLogout, href: undefined  },
-    { name: 'Users', icon: UsersIcon, href: '/users', adminOnly: true },
+    { name: 'Logout', icon: LogOutIcon, onClick: handleLogout },
   ];
 
-  const renderNavigationItem = (item) => {
+  const guestNavigation: NavigationItem[] = [
+    { name: 'Shared Files', icon: ShareIcon, href: '/shared' },
+    { name: 'Security Settings', icon: Shield, href: '/security' },
+    { name: 'Logout', icon: LogOutIcon, onClick: handleLogout },
+  ];
+
+  const navigationItems = user?.role === 'ADMIN' 
+    ? adminNavigation 
+    : user?.role === 'GUEST'
+    ? guestNavigation
+    : userNavigation;
+
+  const renderNavigationItem = (item: NavigationItem) => {
+    const IconComponent = item.icon;
     if (item.onClick) {
       return (
         <button
           key={item.name}
           onClick={item.onClick}
-          className="group w-full flex items-center rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600"
+          className={getLinkClassName(item.href)}
         >
-          <item.icon className="mr-3 h-6 w-6 text-gray-400 group-hover:text-indigo-600" />
+          <IconComponent className={`mr-3 h-6 w-6 ${
+              item.href && isActivePath(item.href)
+                  ? 'text-indigo-600'
+                  : 'text-gray-400 group-hover:text-indigo-600'
+          }`} />
           {item.name}
         </button>
       );
     }
 
     return (
-      <a
+      <Link
         key={item.name}
-        href={item.href}
-        className="group w-full flex items-center rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600"
+        to={item.href || '#'}
+        className={getLinkClassName(item.href)}
       >
-        <item.icon className="mr-3 h-6 w-6 text-gray-400 group-hover:text-indigo-600" />
+        <IconComponent className={`mr-3 h-6 w-6 ${
+            item.href && isActivePath(item.href)
+                ? 'text-indigo-600'
+                : 'text-gray-400 group-hover:text-indigo-600'
+        }`} />
         {item.name}
-      </a>
+      </Link>
     );
   };
 
@@ -71,15 +122,20 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           <div className="flex h-16 justify-between">
             <div className="flex">
               <div className="flex flex-shrink-0 items-center">
-                <img src="title.png" alt="FortiFile" className="h-6" />
+                <img src="/title.png" alt="FortiFile" className="h-6" />
               </div>
             </div>
-            <div className="flex items-center">
+            <div className="flex items-center gap-4">
               <div className="flex-shrink-0">
                 <span className="text-sm text-gray-500">
-                  Welcome, {loading ? '...' : user?.first_name + '!' || 'Guest!'}
+                  Welcome, {loading ? '...' : user?.first_name || 'Guest'}!
                 </span>
               </div>
+              {user && (
+                <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+                  {user.role}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -90,15 +146,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           {/* Sidebar Navigation */}
           <div className="w-52 flex-shrink-0">
             <nav className="space-y-1">
-              {navigation.map(item => (
-                (!item.adminOnly || user?.role === 'ADMIN') && renderNavigationItem(item)
-              ))}
+              {navigationItems.map(renderNavigationItem)}
             </nav>
           </div>
 
           {/* Main Content Area */}
-          <div className="flex-1 bg-white rounded-lg shadow">
-            <div className="p-6">
+          <div className="flex-1">
+            <div className="bg-white rounded-lg shadow">
               {children}
             </div>
           </div>

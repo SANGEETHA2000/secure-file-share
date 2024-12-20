@@ -1,23 +1,32 @@
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux.ts';
-import { fetchAllUsers, updateUserRole, setSelectedUser } from '../../store/slices/adminSlice.ts';
-import { Users, Shield, HardDrive, Activity, Loader } from 'lucide-react';
+import { fetchAllUsers, updateUserRole } from '../../store/slices/adminSlice.ts';
+import { Users, Shield, HardDrive, Activity, Loader, AlertTriangle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
-const AdminDashboard: React.FC = () => {
+const UsersManage: React.FC = () => {
     const dispatch = useAppDispatch();
-    const { users, loading, selectedUser } = useAppSelector(state => state.admin);
+    const { users, loading } = useAppSelector(state => state.admin);
+    const { user: currentUser } = useAppSelector(state => state.auth);
     const [searchTerm, setSearchTerm] = useState('');
+    const [roleUpdateError, setRoleUpdateError] = useState<string | null>(null);
 
     useEffect(() => {
         dispatch(fetchAllUsers());
     }, [dispatch]);
 
     const handleRoleChange = async (userId: string, newRole: string) => {
+        if (userId === currentUser?.id) {
+            setRoleUpdateError("You cannot change your own role.");
+            return;
+        }
+
         try {
             await dispatch(updateUserRole({ userId, role: newRole })).unwrap();
+            setRoleUpdateError(null);
         } catch (error) {
             console.error('Failed to update user role:', error);
+            setRoleUpdateError('Failed to update user role. Please try again.');
         }
     };
 
@@ -28,7 +37,7 @@ const AdminDashboard: React.FC = () => {
         return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
     };
 
-    const filteredUsers = users.filter(user => 
+    const filteredUsers = users.filter(user =>
         user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -37,6 +46,11 @@ const AdminDashboard: React.FC = () => {
     const totalUsers = users.length;
     const totalStorage = users.reduce((acc, user) => acc + user.storage_used, 0);
     const mfaEnabledUsers = users.filter(user => user.mfa_enabled).length;
+    const usersByRole = {
+        ADMIN: users.filter(user => user.role === 'ADMIN').length,
+        USER: users.filter(user => user.role === 'USER').length,
+        GUEST: users.filter(user => user.role === 'GUEST').length
+    };
 
     return (
         <div className="p-6 space-y-6">
@@ -48,6 +62,9 @@ const AdminDashboard: React.FC = () => {
                         <div className="ml-4">
                             <p className="text-sm font-medium text-gray-600">Total Users</p>
                             <p className="text-2xl font-semibold text-gray-900">{totalUsers}</p>
+                            <div className="mt-1 text-xs text-gray-500">
+                                Admin: {usersByRole.ADMIN} • Regular: {usersByRole.USER} • Guest: {usersByRole.GUEST}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -58,7 +75,7 @@ const AdminDashboard: React.FC = () => {
                         <div className="ml-4">
                             <p className="text-sm font-medium text-gray-600">MFA Enabled</p>
                             <p className="text-2xl font-semibold text-gray-900">
-                                {((mfaEnabledUsers / totalUsers) * 100).toFixed(1)}%
+                                {totalUsers > 0 ? ((mfaEnabledUsers / totalUsers) * 100).toFixed(1) : 0}%
                             </p>
                         </div>
                     </div>
@@ -82,7 +99,7 @@ const AdminDashboard: React.FC = () => {
                         <div className="ml-4">
                             <p className="text-sm font-medium text-gray-600">Active Today</p>
                             <p className="text-2xl font-semibold text-gray-900">
-                                {users.filter(user => 
+                                {users.filter(user =>
                                     new Date(user.last_login).toDateString() === new Date().toDateString()
                                 ).length}
                             </p>
@@ -99,6 +116,13 @@ const AdminDashboard: React.FC = () => {
                         Manage user roles and monitor account activity
                     </p>
                 </div>
+
+                {roleUpdateError && (
+                    <div className="mx-6 mt-4 flex items-center p-4 bg-red-50 text-red-700 rounded-md">
+                        <AlertTriangle className="h-5 w-5 mr-2" />
+                        {roleUpdateError}
+                    </div>
+                )}
 
                 {/* Search Bar */}
                 <div className="p-4">
@@ -142,12 +166,15 @@ const AdminDashboard: React.FC = () => {
                                 </tr>
                             ) : (
                                 filteredUsers.map(user => (
-                                    <tr key={user.id}>
+                                    <tr key={user.id} className={user.id === currentUser?.id ? 'bg-blue-50' : ''}>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center">
                                                 <div>
                                                     <div className="text-sm font-medium text-gray-900">
                                                         {user.username}
+                                                        {user.id === currentUser?.id && (
+                                                            <span className="ml-2 text-xs text-blue-600">(You)</span>
+                                                        )}
                                                     </div>
                                                     <div className="text-sm text-gray-500">
                                                         {user.email}
@@ -159,7 +186,10 @@ const AdminDashboard: React.FC = () => {
                                             <select
                                                 value={user.role}
                                                 onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                                                className="text-sm rounded-md border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
+                                                disabled={user.id === currentUser?.id}
+                                                className={`text-sm rounded-md border-gray-300 
+                                                    focus:ring-indigo-500 focus:border-indigo-500
+                                                    ${user.id === currentUser?.id ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                             >
                                                 <option value="USER">User</option>
                                                 <option value="ADMIN">Admin</option>
@@ -171,8 +201,8 @@ const AdminDashboard: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                user.mfa_enabled 
-                                                    ? 'bg-green-100 text-green-800' 
+                                                user.mfa_enabled
+                                                    ? 'bg-green-100 text-green-800'
                                                     : 'bg-yellow-100 text-yellow-800'
                                             }`}>
                                                 {user.mfa_enabled ? 'Enabled' : 'Disabled'}
@@ -192,4 +222,4 @@ const AdminDashboard: React.FC = () => {
     );
 };
 
-export default AdminDashboard;
+export default UsersManage;

@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { useAppSelector } from '../../hooks/redux.ts';
+import { useAppDispatch, useAppSelector } from '../../hooks/redux.ts';
 import { Shield, Lock, QrCode } from 'lucide-react';
 import MFASetup from './MFASetup.tsx';
 import DashboardLayout from '../layout/DashboardLayout.tsx';
+import { disableMFA } from '../../store/slices/authSlice.ts';
 
 // The SecuritySettings component provides a central place for users to manage their security preferences,
 // with a primary focus on MFA setup and management.
 const SecuritySettings = () => {
+    const dispatch = useAppDispatch();
     const { user } = useAppSelector(state => state.auth);
     const [showMFASetup, setShowMFASetup] = useState(false);
 
@@ -14,6 +16,19 @@ const SecuritySettings = () => {
     if (showMFASetup) {
         return <MFASetup onClose={() => setShowMFASetup(false)} />;
     }
+
+    const handleDisableMFA = async () => {
+        const password = prompt('Please enter your password to disable MFA');
+        if (!password) return;
+    
+        try {
+            await dispatch(disableMFA(password)).unwrap();
+            // Show success message
+        } catch (error) {
+            // Show error message
+            console.error('Failed to disable MFA:', error);
+        }
+    };
 
     return (
         <DashboardLayout>
@@ -58,7 +73,7 @@ const SecuritySettings = () => {
                                     ) : (
                                         <button
                                             type="button"
-                                            onClick={() => setShowMFASetup(true)}
+                                            onClick={handleDisableMFA}
                                             className="inline-flex items-center px-4 py-2 border border-transparent 
                                                     text-sm font-medium rounded-md shadow-sm text-white 
                                                     bg-indigo-600 hover:bg-indigo-700 focus:outline-none 

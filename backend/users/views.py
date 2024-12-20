@@ -1,10 +1,11 @@
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAdminUser
 from django.contrib.auth import get_user_model
 from .serializers import UserSerializer, UserProfileSerializer
 import pyotp
+from django.db.models import Sum
 
 User = get_user_model()
 
@@ -99,3 +100,101 @@ class UserViewSet(viewsets.ModelViewSet):
             {'detail': 'Invalid token'},
             status=status.HTTP_400_BAD_REQUEST
         )
+    
+    @action(detail=False, methods=['post'])
+    def disable_mfa(self, request):
+        """
+        Disable MFA for the current user
+        """
+        user = request.user
+        if not user.mfa_enabled:
+            return Response(
+                {'detail': 'MFA is not enabled'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Verify current password
+        password = request.data.get('password')
+        if not user.check_password(password):
+            return Response(
+                {'detail': 'Incorrect password'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Disable MFA
+        user.mfa_enabled = False
+        user.mfa_secret = None  # Clear the secret
+        user.save()
+        
+        return Response({'detail': 'MFA disabled successfully'})
+    
+class AdminViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for admin-only operations
+    """
+    serializer_class = UserSerializer
+    permission_classes = [IsAdminUser]
+    queryset = User.objects.all()
+
+    def get_queryset(self):
+        return User.objects.all().annotate(
+            storage_used=Sum('owned_files__size')
+        )
+
+    @action(detail=False, methods=['get'])
+    def users(self, request):
+        """Get all users with their details"""
+        users = self.get_queryset()
+        data = []
+        
+        for user in users:
+            user_data = {
+                'id': str(user.id),
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'role': user.role,
+                'mfa_enabled': user.mfa_enabled,
+                'created_at': user.date_joined,
+                'last_login': user.last_login,
+                'storage_used': user.storage_used or 0
+            }
+            data.append(user_data)
+        
+        return Response(data)
+
+    @action(detail=True, methods=['patch'])
+    def update_role(self, request, pk=None):
+        """Update user role"""
+        user = self.get_object()
+        new_role = request.data.get('role')
+        
+        if not new_role or new_role not in [r[0] for r in User.Roles.choices]:
+            return Response(
+                {'detail': 'Invalid role specified'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Prevent admin from changing their own role
+        if user == request.user:
+            return Response(
+                {'detail': 'Cannot modify own role'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user.role = new_role
+        user.save()
+        
+        return Response({
+            'id': str(user.id),
+            'username': user.username,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'role': user.role,
+            'mfa_enabled': user.mfa_enabled,
+            'created_at': user.date_joined,
+            'last_login': user.last_login,
+            'storage_used': Sum('owned_files__size') or 0
+        })

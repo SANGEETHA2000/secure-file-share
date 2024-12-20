@@ -30,3 +30,13 @@ class IsFileOwnerOrSharedWith(permissions.BasePermission):
             return share.permission == 'DOWNLOAD'
             
         return False
+    
+class IsAdmin(permissions.BasePermission):
+    """
+    Custom permission to only allow admin users.
+    """
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated and request.user.is_admin()
+
+    def has_object_permission(self, request, view, obj):
+        return self.has_permission(request, view)

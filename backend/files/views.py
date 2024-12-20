@@ -98,6 +98,56 @@ class FileViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @action(detail=False, methods=['get'])
+    def shared(self, request):
+        """
+        Get files shared with the current user.
+        """
+        shared_files = File.objects.filter(
+            shares__shared_with=request.user,
+            shares__expires_at__gt=timezone.now()
+        ).distinct()
+        serializer = self.get_serializer(shared_files, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def all_files(self, request):
+        """
+        Admin endpoint to get all files with their sharing info
+        """
+        if not request.user.is_admin():
+            return Response(
+                {'detail': 'Not authorized'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        files = File.objects.all()
+        serializer = FileSerializer(files, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def statistics(self, request):
+        """
+        Get file statistics for admin dashboard
+        """
+        if not request.user.is_admin():
+            return Response(
+                {'detail': 'Not authorized'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        total_files = File.objects.count()
+        total_size = File.objects.aggregate(total=models.Sum('size'))['total'] or 0
+        total_shares = FileShare.objects.filter(
+            expires_at__gt=timezone.now()
+        ).count()
+
+        return Response({
+            'total_files': total_files,
+            'total_size': total_size,
+            'active_shares': total_shares
+        })
+
 class FileShareViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing file sharing functionality.

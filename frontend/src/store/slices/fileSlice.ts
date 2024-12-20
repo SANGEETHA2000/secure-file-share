@@ -17,12 +17,18 @@ interface File {
 // The FileState interface defines what our file management system keeps track of
 interface FileState {
     files: File[];
+    sharedFiles: File[];
     loading: boolean;
     error: string | null;
     uploadProgress: number | null;
     shareLinks: ShareLink[];
     sharingLoading: boolean;
     sharingError: string | null;
+    statistics: {
+        totalFiles: number;
+        totalSize: number;
+        activeShares: number;
+    } | null;
 }
 
 interface ShareSettings {
@@ -45,12 +51,14 @@ interface ShareLink {
 
 const initialState: FileState = {
     files: [],
+    sharedFiles: [],
     loading: false,
     error: null,
     uploadProgress: null,
     shareLinks: [],
     sharingLoading: false,
-    sharingError: null
+    sharingError: null,
+    statistics: null
 };
 
 // This action handles file uploads with encryption
@@ -197,6 +205,43 @@ export const removeShare = createAsyncThunk(
     }
 );
 
+// Add new async thunk for fetching shared files
+export const fetchSharedFiles = createAsyncThunk(
+    'files/fetchShared',
+    async (_, { rejectWithValue }) => {
+        try {
+            const response = await api.get('/files/shared/');
+            return response.data;
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.detail || 'Failed to fetch shared files');
+        }
+    }
+);
+
+export const fetchAdminFiles = createAsyncThunk(
+    'files/fetchAdminFiles',
+    async (_, { rejectWithValue }) => {
+        try {
+            const response = await api.get('/files/all_files/');
+            return response.data;
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.detail || 'Failed to fetch files');
+        }
+    }
+);
+
+export const fetchFileStatistics = createAsyncThunk(
+    'files/fetchStatistics',
+    async (_, { rejectWithValue }) => {
+        try {
+            const response = await api.get('/files/statistics/');
+            return response.data;
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.detail || 'Failed to fetch statistics');
+        }
+    }
+);
+
 const fileSlice = createSlice({
     name: 'files',
     initialState,
@@ -270,6 +315,41 @@ const fileSlice = createSlice({
                 state.shareLinks = state.shareLinks.filter(
                     share => share.id !== action.payload
                 );
+            })
+
+            // Handle shared files fetching
+            .addCase(fetchSharedFiles.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(fetchSharedFiles.fulfilled, (state, action) => {
+                state.loading = false;
+                state.sharedFiles = action.payload;
+            })
+            .addCase(fetchSharedFiles.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload as string;
+            })
+
+            // Handle admin files fetching
+            .addCase(fetchAdminFiles.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(fetchAdminFiles.fulfilled, (state, action) => {
+                state.loading = false;
+                state.files = action.payload;
+            })
+            .addCase(fetchAdminFiles.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload as string;
+            })
+            .addCase(fetchFileStatistics.fulfilled, (state, action) => {
+                state.statistics = {
+                    totalFiles: action.payload.total_files,
+                    totalSize: action.payload.total_size,
+                    activeShares: action.payload.active_shares
+                };
             });
     }
 });
