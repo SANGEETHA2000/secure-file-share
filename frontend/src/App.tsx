@@ -18,6 +18,7 @@ import FilesManage from './components/admin/FilesManage.tsx';
 import UserFiles from './pages/user/UserFiles.tsx';
 import UserShared from './pages/user/UserShared.tsx';
 import GuestShared from './pages/guest/GuestShared.tsx';
+import FileAccess from './pages/FileAccess.tsx';
 
 // Role-based redirect component
 const RoleBasedRedirect: React.FC = () => {
@@ -39,6 +40,7 @@ const App = () => {
                 {/* Public Routes */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/share/:token" element={<FileAccess />} />
 
                 {/* Protected Common Route */}
                 <Route 

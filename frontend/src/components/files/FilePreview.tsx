@@ -35,7 +35,7 @@ const FilePreview: React.FC<FilePreviewProps> = ({
                 });
                 // Get client encryption key from headers
                 const clientKey = response.headers['x-client-key'];
-                if (clientKey && clientKey != 'None') {
+                if (clientKey && clientKey !== 'None') {
                     // Convert blob to ArrayBuffer for decryption
                     const encryptedBuffer = await response.data.arrayBuffer();
                     
@@ -98,8 +98,8 @@ const FilePreview: React.FC<FilePreviewProps> = ({
         switch (mimeType) {
             case 'application/pdf':
                 return (
-                    <iframe
-                        src={content}
+                    <embed
+                        src={`${content}#toolbar=0`}
                         className="w-full h-full"
                         title={fileName}
                     />

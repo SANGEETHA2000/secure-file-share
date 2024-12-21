@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux.ts';
-import { fetchAllUsers, updateUserRole } from '../../store/slices/adminSlice.ts';
-import { Users, Shield, HardDrive, Activity, Loader, AlertTriangle, Search } from 'lucide-react';
+import { fetchAllUsers } from '../../store/slices/adminSlice.ts';
+import { Users, Shield, HardDrive, Activity, Loader, Search } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import StatisticsCard from '../layout/StatisticsCardLayout.tsx';
 
@@ -10,26 +10,10 @@ const UsersManage: React.FC = () => {
     const { users, loading } = useAppSelector(state => state.admin);
     const { user: currentUser } = useAppSelector(state => state.auth);
     const [searchTerm, setSearchTerm] = useState('');
-    const [roleUpdateError, setRoleUpdateError] = useState<string | null>(null);
 
     useEffect(() => {
         dispatch(fetchAllUsers());
     }, [dispatch]);
-
-    // const handleRoleChange = async (userId: string, newRole: string) => {
-    //     if (userId === currentUser?.id) {
-    //         setRoleUpdateError("You cannot change your own role.");
-    //         return;
-    //     }
-
-    //     try {
-    //         await dispatch(updateUserRole({ userId, role: newRole })).unwrap();
-    //         setRoleUpdateError(null);
-    //     } catch (error) {
-    //         console.error('Failed to update user role:', error);
-    //         setRoleUpdateError('Failed to update user role. Please try again.');
-    //     }
-    // };
 
     const formatStorageSize = (bytes: number) => {
         const sizes = ['Bytes', 'KB', 'MB', 'GB'];
@@ -97,13 +81,6 @@ const UsersManage: React.FC = () => {
                 </div>
             </div>
 
-            {roleUpdateError && (
-                <div className="mx-6 mt-4 flex items-center p-4 bg-red-50 text-red-700 rounded-md">
-                    <AlertTriangle className="h-5 w-5 mr-2" />
-                    {roleUpdateError}
-                </div>
-            )}
-
             {/* Search Bar */}
             <div className='relative'>
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -165,18 +142,6 @@ const UsersManage: React.FC = () => {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500">
-                                            {/* <select
-                                                value={user.role}
-                                                onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                                                disabled={user.id === currentUser?.id}
-                                                className={`text-sm rounded-md border-gray-300 
-                                                    focus:ring-indigo-500 focus:border-indigo-500
-                                                    ${user.id === currentUser?.id ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                                            >
-                                                <option value="USER">User</option>
-                                                <option value="ADMIN">Admin</option>
-                                                <option value="GUEST">Guest</option>
-                                            </select> */}
                                             {user.role}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500">

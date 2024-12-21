@@ -85,6 +85,10 @@ class FileShare(models.Model):
         null=True,
         blank=True
     )
+    shared_with_email = models.EmailField(
+        null=True,
+        help_text="Email address this file was shared with"
+    )
     permission = models.CharField(
         max_length=10,
         choices=Permissions.choices,

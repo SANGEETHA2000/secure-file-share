@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppSelector } from '../../hooks/redux.ts';
-import { Trash2, Share2, Eye } from 'lucide-react';
+import { Share2, Eye } from 'lucide-react';
 import FileListLayout from '../layout/FileListLayout.tsx';
 import FileDownload from './FileDownload.tsx';
 import ShareModal from './ShareModal.tsx';
@@ -91,9 +91,6 @@ export const UserFileList: React.FC = () => {
                     onClick={() => handleShare(file)}
                 >
                     <Share2 className="h-5 w-5 text-gray-500" />
-                </button>
-                <button className="p-1 hover:bg-gray-100 rounded-full" title="Delete">
-                    <Trash2 className="h-5 w-5 text-red-500" />
                 </button>
             </>
         );

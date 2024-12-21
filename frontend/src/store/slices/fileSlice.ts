@@ -59,6 +59,8 @@ interface ShareAccessResponse {
     fileId: string;
     temporaryPassword?: string;
     permission: 'VIEW' | 'DOWNLOAD';
+    isNewUser: boolean;
+    username?: string;
 }
 
 interface DownloadResponse {
@@ -124,19 +126,6 @@ export const fetchFiles = createAsyncThunk(
             return response.data;
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.detail || 'Failed to fetch files');
-        }
-    }
-);
-
-// Delete a file
-export const deleteFile = createAsyncThunk(
-    'files/delete',
-    async (fileId: string, { rejectWithValue }) => {
-        try {
-            await api.delete(`/files/${fileId}/`);
-            return fileId;
-        } catch (error: any) {
-            return rejectWithValue(error.response?.data?.detail || 'Failed to delete file');
         }
     }
 );
@@ -212,7 +201,7 @@ export const verifyShareAccess = createAsyncThunk<ShareAccessResponse, ShareAcce
             });
             return response.data;
         } catch (error: any) {
-            return rejectWithValue(error.response?.data?.detail || 'Invalid or expired share link');
+            return rejectWithValue('Invalid or expired share link');
         }
     }
 );
@@ -226,19 +215,6 @@ export const fetchFileShares = createAsyncThunk(
             return response.data;
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.detail || 'Failed to fetch shares');
-        }
-    }
-);
-
-// Add a new action to remove a share
-export const removeShare = createAsyncThunk(
-    'files/removeShare',
-    async (shareId: string, { rejectWithValue }) => {
-        try {
-            await api.delete(`/shares/${shareId}/`);
-            return shareId;
-        } catch (error: any) {
-            return rejectWithValue(error.response?.data?.detail || 'Failed to remove share');
         }
     }
 );
@@ -324,11 +300,6 @@ const fileSlice = createSlice({
                 state.loading = false;
                 state.error = action.payload as string;
             })
-            
-            // Handle delete states
-            .addCase(deleteFile.fulfilled, (state, action) => {
-                state.files = state.files.filter(file => file.id !== action.payload);
-            })
 
             // Create share link cases
             .addCase(createShareLink.pending, (state) => {
@@ -347,13 +318,6 @@ const fileSlice = createSlice({
             // Handle share fetching
             .addCase(fetchFileShares.fulfilled, (state, action) => {
                 state.shareLinks = action.payload;
-            })
-    
-            // Handle share removal
-            .addCase(removeShare.fulfilled, (state, action) => {
-                state.shareLinks = state.shareLinks.filter(
-                    share => share.id !== action.payload
-                );
             })
 
             // Handle shared files fetching

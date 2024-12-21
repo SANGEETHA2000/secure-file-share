@@ -1,7 +1,7 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from django.conf import settings
@@ -9,11 +9,60 @@ from django.http import HttpResponse, FileResponse
 from cryptography.fernet import Fernet
 import os
 import uuid
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.db import models
 from .models import File, FileShare
 from .serializers import FileSerializer, FileShareSerializer
 from .permissions import IsFileOwnerOrSharedWith
+import secrets
+import string
+
+User = get_user_model()
+
+def generate_secure_password(length=12):
+    """Generate a secure random password"""
+    alphabet = string.ascii_letters + string.digits + string.punctuation
+    while True:
+        password = ''.join(secrets.choice(alphabet) for i in range(length))
+        # Check if password has at least one of each required type
+        if (any(c.islower() for c in password)
+                and any(c.isupper() for c in password)
+                and any(c.isdigit() for c in password)
+                and any(c in string.punctuation for c in password)):
+            return password
+        
+def get_user_by_email(email: str):
+    """
+    Get a user by email, ensuring case-insensitive comparison
+    Returns None if no user is found
+    """
+    try:
+        # Log the query we're about to make
+        print(f"Looking up user with email: {email}")
+        
+        # Get all users and log them for debugging
+        all_users = User.objects.all()
+        print("All users in database:")
+        print(all_users)
+        for u in all_users:
+            print(f"User: {u.username}, Email: {u.email}, User details: {u}")
+        
+        # Use get() directly with iexact and handle DoesNotExist
+        user = User.objects.get(email__iexact=email)
+        
+        # Log the found user details
+        print(f"Query found user: {user.username}")
+        print(f"User details - ID: {user.id}, Email: {user.email}, Role: {user.role}")
+        
+        return user
+        
+    except User.DoesNotExist:
+        print(f"No user found with email: {email}")
+        return None
+    except Exception as e:
+        print(f"Error in get_user_by_email: {str(e)}")
+        return None
 
 class FileViewSet(viewsets.ModelViewSet):
     """
@@ -222,6 +271,14 @@ class FileShareViewSet(viewsets.ModelViewSet):
     """
     serializer_class = FileShareSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        """
+        Override to allow unauthenticated access to verify_access
+        """
+        if self.action == 'verify_access':
+            return [permissions.AllowAny()]
+        return super().get_permissions()
     
     def get_queryset(self):
         """
@@ -242,10 +299,15 @@ class FileShareViewSet(viewsets.ModelViewSet):
         """
         serializer.save()
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], url_path='verify-access', url_name='verify_access')
     def verify_access(self, request):
         """
         Verify file share access and handle guest user access.
+        This endpoint handles:
+        1. Verifying the share token is valid
+        2. Checking if the email matches what was shared
+        3. Creating a guest account if needed
+        4. Associating the share with the user
         """
         token = request.data.get('token')
         email = request.data.get('email')
@@ -257,23 +319,73 @@ class FileShareViewSet(viewsets.ModelViewSet):
             )
 
         try:
+            # Find the share and verify it's not expired
             share = FileShare.objects.get(
                 access_token=token,
                 expires_at__gt=timezone.now()
             )
             
-            # Verify email matches shared_with
-            if share.shared_with.email != email:
-                raise FileShare.DoesNotExist
-
-            response_data = {
-                'fileId': str(share.file.id),
-                'permission': share.permission,
-            }
-
-            # Include temporary password for guest users
-            if share.shared_with.role == 'GUEST':
-                response_data['temporaryPassword'] = share.shared_with.password
+            # Check if user exists
+            user = User.objects.filter(email=email).first()
+            
+            # If this share was created for a different email
+            if share.shared_with_email != email:
+                return Response(
+                    {'detail': 'This file was not shared with this email address.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            if not user:
+                # Create new guest user
+                temp_password = ''.join(secrets.choice(
+                    string.ascii_letters + string.digits
+                ) for i in range(12))
+                
+                username = email.split('@')[0]
+                
+                # Make sure username is unique
+                base_username = username
+                counter = 1
+                while User.objects.filter(username=username).exists():
+                    username = f"{base_username}{counter}"
+                    counter += 1
+                
+                user = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    password=temp_password,
+                    role='GUEST'
+                )
+                
+                # Associate the share with the new user
+                share.shared_with = user
+                share.save()
+                
+                response_data = {
+                    'fileId': str(share.file.id),
+                    'permission': share.permission,
+                    'isNewUser': True,
+                    'username': username,
+                    'temporaryPassword': temp_password
+                }
+            else:
+                # For existing users, just verify everything matches
+                if not share.shared_with:
+                    # If this is the first time they're accessing, associate the share with them
+                    share.shared_with = user
+                    share.save()
+                elif share.shared_with != user:
+                    # If this share was already claimed by a different user
+                    return Response(
+                        {'detail': 'Invalid access attempt'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                    
+                response_data = {
+                    'fileId': str(share.file.id),
+                    'permission': share.permission,
+                    'isNewUser': False
+                }
 
             return Response(response_data)
             
@@ -282,7 +394,7 @@ class FileShareViewSet(viewsets.ModelViewSet):
                 {'detail': 'Invalid or expired share link'},
                 status=status.HTTP_404_NOT_FOUND
             )
-
+        
     @action(detail=True, methods=['post'])
     def revoke(self, request, pk=None):
         """
@@ -300,3 +412,4 @@ class FileShareViewSet(viewsets.ModelViewSet):
         share.save()
         
         return Response({'detail': 'Share revoked successfully'})
+    

@@ -1,8 +1,8 @@
 // src/components/files/ShareModal.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useAppDispatch } from '../../hooks/redux.ts';
-import { X, Copy, AlertCircle, CheckCircle, XCircle} from 'lucide-react';
-import { createShareLink, fetchFileShares } from '../../store/slices/fileSlice.ts';
+import { X, Copy, AlertCircle, CheckCircle } from 'lucide-react';
+import { createShareLink } from '../../store/slices/fileSlice.ts';
 
 interface ShareModalProps {
     isOpen: boolean;
@@ -33,6 +33,8 @@ const ShareModal: React.FC<ShareModalProps> = ({
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [shareUrl, setShareUrl] = useState<string | null>(null);
+    const [urlCopied, setUrlCopied] = useState(false);
 
     const handleShare = async () => {
         try {
@@ -45,19 +47,34 @@ const ShareModal: React.FC<ShareModalProps> = ({
                 return;
             }
 
-            await dispatch(createShareLink({
+            const result = await dispatch(createShareLink({
                 fileId,
                 email,
                 expires_in_minutes: expiryMinutes,
                 permission
             })).unwrap();
 
+            // Generate share URL
+            const shareUrl = `${window.location.origin}/share/${result.access_token}`;
+            setShareUrl(shareUrl);
             setSuccess(`File shared successfully with ${email}`);
             setEmail('');
         } catch (error: any) {
             setError(error.message || 'Failed to share file');
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const copyToClipboard = async () => {
+        if (shareUrl) {
+            try {
+                await navigator.clipboard.writeText(shareUrl);
+                setUrlCopied(true);
+                setTimeout(() => setUrlCopied(false), 3000);
+            } catch (err) {
+                setError('Failed to copy link');
+            }
         }
     };
 
@@ -136,6 +153,25 @@ const ShareModal: React.FC<ShareModalProps> = ({
                         <div className="p-3 bg-green-50 text-green-700 rounded-md flex items-center">
                             <CheckCircle className="h-5 w-5 mr-2" />
                             <span>{success}</span>
+                        </div>
+                    )}
+
+                    {shareUrl && (
+                        <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                            <div className="flex items-center justify-between">
+                                <div className="truncate mr-2">
+                                    <p className="text-sm text-gray-500">Share Link:</p>
+                                    <p className="text-sm font-mono truncate">{shareUrl}</p>
+                                </div>
+                                <button
+                                    onClick={copyToClipboard}
+                                    className="flex-shrink-0 p-2 text-gray-500 hover:text-gray-700"
+                                    title="Copy link"
+                                >
+                                    <Copy className={`mr-2 h-5 w-5 ${urlCopied ? 'text-green-500' : 'text-gray-500'}`} />
+                                    {urlCopied ? 'Copied!' : 'Copy Link'}
+                                </button>
+                            </div>
                         </div>
                     )}
 

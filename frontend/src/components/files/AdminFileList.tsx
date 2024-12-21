@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux.ts';
-import { Clock, Files, HardDrive, Share2, Trash2 } from 'lucide-react';
+import { Clock, Files, HardDrive, Share2 } from 'lucide-react';
 import FileListLayout from '../layout/FileListLayout.tsx';
 import FileDownload from './FileDownload.tsx';
 import { fetchAdminFiles, fetchFileStatistics } from '../../store/slices/fileSlice.ts';
@@ -52,9 +52,6 @@ const AdminFileList: React.FC = () => {
     const renderFileActions = (file: any) => (
         <>
             <FileDownload fileId={file.id} fileName={file.original_name} />
-            <button className="p-1 hover:bg-gray-100 rounded-full" title="Delete">
-                <Trash2 className="h-5 w-5 text-red-500" />
-            </button>
         </>
     );
 

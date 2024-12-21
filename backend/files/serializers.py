@@ -4,22 +4,6 @@ from .models import File, FileShare
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from datetime import timedelta
-import secrets
-import string
-
-User = get_user_model()
-
-def generate_secure_password(length=12):
-    """Generate a secure random password"""
-    alphabet = string.ascii_letters + string.digits + string.punctuation
-    while True:
-        password = ''.join(secrets.choice(alphabet) for i in range(length))
-        # Check if password has at least one of each required type
-        if (any(c.islower() for c in password)
-                and any(c.isupper() for c in password)
-                and any(c.isdigit() for c in password)
-                and any(c in string.punctuation for c in password)):
-            return password
 
 class FileSerializer(serializers.ModelSerializer):
     file = serializers.FileField(write_only=True)
@@ -99,29 +83,17 @@ class FileShareSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        email = validated_data.pop('shared_with_email')
         minutes = validated_data.pop('expires_in_minutes')
         
-        # Get or create user (as guest if doesn't exist)
-        user, created = User.objects.get_or_create(
-            email=email,
-            defaults={
-                'username': email.split('@')[0],
-                'role': 'GUEST',
-                'password': generate_secure_password() 
-            }
-        )
-
-         # If user was just created, need to set password properly
-        if created:
-            user.set_password(user.password)  # Hash the password
-            user.save()
-
-        # Create share
+        # Calculate expiration time
         expires_at = timezone.now() + timedelta(minutes=minutes)
-        return FileShare.objects.create(
+        
+        # Create share without associating with a user yet
+        share = FileShare.objects.create(
             **validated_data,
-            shared_with=user,
+            shared_with=None,  # We'll set this when they actually access the file
             created_by=self.context['request'].user,
             expires_at=expires_at
         )
+        
+        return share

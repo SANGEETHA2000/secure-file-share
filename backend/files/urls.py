@@ -11,7 +11,4 @@ router.register(r'shares', FileShareViewSet, basename='fileshare')
 urlpatterns = [
     # Include the router-generated URLs
     path('', include(router.urls)),
-    
-    # Add any custom file-related endpoints here if needed
-    # Example: path('public-share/<str:token>/', views.public_share_view, name='public_share'),
 ]

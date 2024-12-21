@@ -8,6 +8,5 @@ export const usePermissions = () => {
         canManageUsers: user?.role === 'ADMIN',
         canShareFiles: user?.role !== 'GUEST',
         canDownloadFiles: user?.role !== 'GUEST',
-        canDeleteFiles: user?.role === 'ADMIN' || user?.role === 'USER',
     };
 };
