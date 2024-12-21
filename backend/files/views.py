@@ -70,7 +70,7 @@ class FileViewSet(viewsets.ModelViewSet):
     and basic CRUD operations. Implements encryption for secure file storage.
     """
     serializer_class = FileSerializer
-    permission_classes = [IsAuthenticated, IsFileOwnerOrSharedWith, IsAdmin]
+    permission_classes = [IsAuthenticated, IsFileOwnerOrSharedWith]
     
     def get_queryset(self):
         """
@@ -145,7 +145,7 @@ class FileViewSet(viewsets.ModelViewSet):
         file_instance.client_key = client_key
         file_instance.save()
 
-    @action(detail=True, methods=['get'], permission_classes=[IsFileOwnerOrSharedWith, IsAdmin])
+    @action(detail=True, methods=['get'], permission_classes=[IsFileOwnerOrSharedWith])
     def download(self, request, pk=None):
         """Handle secure file download with decryption."""
         file_obj = self.get_object()
