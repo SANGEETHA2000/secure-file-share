@@ -14,7 +14,7 @@ from django.utils import timezone
 from django.db import models
 from .models import File, FileShare
 from .serializers import FileSerializer, FileShareSerializer
-from .permissions import IsFileOwnerOrSharedWith
+from .permissions import IsAdmin, IsFileOwnerOrSharedWith
 import secrets
 import string
 
@@ -70,7 +70,7 @@ class FileViewSet(viewsets.ModelViewSet):
     and basic CRUD operations. Implements encryption for secure file storage.
     """
     serializer_class = FileSerializer
-    permission_classes = [IsAuthenticated, IsFileOwnerOrSharedWith]
+    permission_classes = [IsAuthenticated, IsFileOwnerOrSharedWith, IsAdmin]
     
     def get_queryset(self):
         """
@@ -87,20 +87,34 @@ class FileViewSet(viewsets.ModelViewSet):
         Override get_object to handle both owned and shared files.
         """
         obj = File.objects.filter(
-            models.Q(pk=self.kwargs['pk']),
-            models.Q(owner=self.request.user) |
-            models.Q(
-                shares__shared_with=self.request.user,
-                shares__expires_at__gt=timezone.now()
-            )
-        ).first()
+           models.Q(pk=self.kwargs['pk']),
+           (
+               models.Q(owner=self.request.user) |
+               models.Q(
+                   shares__shared_with=self.request.user,
+                   shares__expires_at__gt=timezone.now()
+               ) |
+               models.Q(owner__isnull=False)  # This will always be True, allowing admins through
+           )
+       ).first()
         
-        if not obj:
-            print("File not found or access denied")
-            
-        self.check_object_permissions(self.request, obj)
-        return obj
-    
+        # If object exists and user is admin, return it
+        if obj and self.request.user.is_admin():
+            return obj
+        
+        # For non-admin users, only return if they have proper access
+        if obj and (
+            obj.owner == self.request.user or
+            obj.shares.filter(
+                shared_with=self.request.user,
+                expires_at__gt=timezone.now()
+            ).exists()
+        ):
+            self.check_object_permissions(self.request, obj)
+            return obj
+
+        print("File not found or access denied")
+
     def perform_create(self, serializer):
         """
         Handle file upload with encryption.
@@ -131,23 +145,24 @@ class FileViewSet(viewsets.ModelViewSet):
         file_instance.client_key = client_key
         file_instance.save()
 
-    @action(detail=True, methods=['get'], permission_classes=[IsFileOwnerOrSharedWith])
+    @action(detail=True, methods=['get'], permission_classes=[IsFileOwnerOrSharedWith, IsAdmin])
     def download(self, request, pk=None):
         """Handle secure file download with decryption."""
         file_obj = self.get_object()
-        
-        # Check download permission
-        if request.user != file_obj.owner:
-            share = file_obj.shares.filter(
-                shared_with=request.user,
-                expires_at__gt=timezone.now()
-            ).first()
-            
-            if not share or share.permission != 'DOWNLOAD':
-                return Response(
-                    {'detail': 'Download permission denied'},
-                    status=status.HTTP_403_FORBIDDEN
-                )
+        print(file_obj)
+        if not request.user.is_admin():         
+            # Check download permission
+            if request.user != file_obj.owner:
+                share = file_obj.shares.filter(
+                    shared_with=request.user,
+                    expires_at__gt=timezone.now()   
+                ).first()
+                
+                if not share or share.permission != 'DOWNLOAD':
+                    return Response(
+                        {'detail': 'Download permission denied'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
         try:
             # Get the encryption key and initialize Fernet
             fernet = Fernet(file_obj.encryption_key_id.encode())
