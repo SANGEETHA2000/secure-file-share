@@ -112,7 +112,7 @@ export const uploadFile = createAsyncThunk(
 
             return response.data;
         } catch (error: any) {
-            return rejectWithValue(error.response?.data?.detail || 'Upload failed');
+            return rejectWithValue(error.response?.data?.detail || error.response?.data?.message || 'Upload failed');
         }
     }
 );

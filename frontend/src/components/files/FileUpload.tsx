@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { useAppSelector } from '../../hooks/redux.ts';
 import { UploadCloud, X, Loader, AlertCircle } from 'lucide-react';
 import { encryptFile } from '../../utils/encryption.ts';
+import { validateFile } from '../../utils/validation.ts';
 
 interface FileUploadProps {
     onFileSelect: (file: File | null) => void;
@@ -10,7 +11,6 @@ interface FileUploadProps {
 
 // Define allowed file types and max file size (50MB)
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'text/plain'];
-const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, selectedFile }) => {
     const { loading, uploadProgress } = useAppSelector(state => state.files);
@@ -18,23 +18,16 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, selectedFile }) =
     const [error, setError] = useState<string | null>(null);
 
     const processFile = async (file: File) => {
+        setError(null);
+        const validation = validateFile(file);
+        if (!validation.isValid) {
+            validation.errors.forEach(error => {
+                setError(error);
+            });
+            return;
+        }
+
         try {
-            setError(null);
-
-            // Validate file type
-            if (!ALLOWED_TYPES.includes(file.type)) {
-                setError('Invalid file type. Allowed types: PDF, JPEG, PNG, TXT');
-                onFileSelect(null);
-                return;
-            }
-
-            // Validate file size
-            if (file.size > MAX_FILE_SIZE) {
-                setError('File size too large. Maximum size: 50MB');
-                onFileSelect(null);
-                return;
-            }
-
             // Client-side encryption
             const { encryptedFile, key } = await encryptFile(file);
 

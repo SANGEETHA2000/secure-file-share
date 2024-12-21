@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../hooks/redux.ts';
 import { register } from '../store/slices/authSlice.ts';
-import { Loader, Lock, UserPlus } from 'lucide-react';
+import { AlertTriangle, Loader, Lock, UserPlus } from 'lucide-react';
 import { LogoLayout } from '../components/layout/LogoLayout.tsx';
+import { validateEmail, validatePassword, validateUsername, sanitizeInput } from '../utils/validation.ts';
 
 type UserRole = 'ADMIN' | 'USER' | 'GUEST';
 
@@ -21,6 +22,8 @@ const Register = () => {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const { loading, error } = useAppSelector((state) => state.auth);
+    const [ validationError, setValidationError ] = useState<string | null>(null);
+    const [ passwordWarning, setPasswordWarning ] = useState<string | null>(null);
 
     const [formData, setFormData] = useState<RegisterFormData>({
         username: '',
@@ -42,6 +45,44 @@ const Register = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setValidationError(null);
+        setPasswordWarning(null);
+        const { username, email, password } = formData;
+        
+        // Sanitize inputs
+        const sanitizedUsername = sanitizeInput(username);
+        formData.username = sanitizedUsername;
+
+        // Validate username
+        const usernameValidation = validateUsername(sanitizedUsername);
+        if (!usernameValidation.isValid) {
+            setValidationError(usernameValidation.error);
+            return;
+        }
+
+        // Validate email
+        const emailValidation = validateEmail(email);
+        if (!emailValidation.isValid) {
+            setValidationError(emailValidation.error);
+            return;
+        }
+        
+        // Validate password
+        const passwordValidation = validatePassword(password);
+        if (!passwordValidation.isValid) {
+            setValidationError(passwordValidation.errors[0]);
+            return;
+        }
+        
+        // If password is weak, warn the user
+        if (passwordValidation.strength === 'weak') {
+            setPasswordWarning(
+                'Your password is considered weak. Consider using a stronger password with a mix of uppercase, lowercase, numbers, and special characters.'
+            );
+            // 3 seconds to read the warning
+            await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+
         const result = await dispatch(register(formData));
         if (register.fulfilled.match(result)) {
             navigate('/login', { 
@@ -149,6 +190,20 @@ const Register = () => {
                             <div className="error-message">
                                 <Lock className="w-4 h-4" />
                                 <span>{error}</span>
+                            </div>
+                        )}
+
+                        {validationError && (
+                            <div className="error-message">
+                                <Lock className="w-4 h-4" />
+                                <span>{validationError}</span>
+                            </div>
+                        )}
+
+                        {passwordWarning && (
+                            <div className="warning-message">
+                                <AlertTriangle className="w-4 h-4 mr-2" />
+                                <span>{passwordWarning}</span>
                             </div>
                         )}
 

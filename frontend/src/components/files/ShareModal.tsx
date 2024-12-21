@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useAppDispatch } from '../../hooks/redux.ts';
 import { X, Copy, AlertCircle, CheckCircle } from 'lucide-react';
 import { createShareLink } from '../../store/slices/fileSlice.ts';
+import { validateEmail, sanitizeInput } from '../../utils/validation.ts';
 
 interface ShareModalProps {
     isOpen: boolean;
@@ -47,9 +48,19 @@ const ShareModal: React.FC<ShareModalProps> = ({
                 return;
             }
 
+            // Sanitize email input
+            const sanitizedEmail = sanitizeInput(email);
+            
+            // Validate email
+            const emailValidation = validateEmail(sanitizedEmail);
+            if (!emailValidation.isValid) {
+                setError(emailValidation.error);
+                return;
+            }
+
             const result = await dispatch(createShareLink({
                 fileId,
-                email,
+                email: sanitizedEmail,
                 expires_in_minutes: expiryMinutes,
                 permission
             })).unwrap();
