@@ -33,6 +33,25 @@ class FileViewSet(viewsets.ModelViewSet):
             return File.objects.all()
         return File.objects.filter(models.Q(owner=user)).distinct()
     
+    def get_object(self):
+        """
+        Override get_object to handle both owned and shared files.
+        """
+        obj = File.objects.filter(
+            models.Q(pk=self.kwargs['pk']),
+            models.Q(owner=self.request.user) |
+            models.Q(
+                shares__shared_with=self.request.user,
+                shares__expires_at__gt=timezone.now()
+            )
+        ).first()
+        
+        if not obj:
+            print("File not found or access denied")
+            
+        self.check_object_permissions(self.request, obj)
+        return obj
+    
     def perform_create(self, serializer):
         """
         Handle file upload with encryption.
@@ -67,7 +86,19 @@ class FileViewSet(viewsets.ModelViewSet):
     def download(self, request, pk=None):
         """Handle secure file download with decryption."""
         file_obj = self.get_object()
-        print(file_obj.client_key)
+        
+        # Check download permission
+        if request.user != file_obj.owner:
+            share = file_obj.shares.filter(
+                shared_with=request.user,
+                expires_at__gt=timezone.now()
+            ).first()
+            
+            if not share or share.permission != 'DOWNLOAD':
+                return Response(
+                    {'detail': 'Download permission denied'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
         try:
             # Get the encryption key and initialize Fernet
             fernet = Fernet(file_obj.encryption_key_id.encode())
@@ -154,6 +185,35 @@ class FileViewSet(viewsets.ModelViewSet):
             'total_size': total_size,
             'active_shares': total_shares
         })
+    
+    @action(detail=True, methods=['get'])
+    def preview(self, request, pk=None):
+        """Handle file preview without forcing download."""
+        file_obj = self.get_object()
+        print(file_obj)
+        try:
+            # Server-side decryption
+            fernet = Fernet(file_obj.encryption_key_id.encode())
+            file_path = os.path.join(settings.ENCRYPTED_FILES_DIR, file_obj.name)
+            
+            with default_storage.open(file_path, 'rb') as f:
+                encrypted_content = f.read()
+            
+            decrypted_content = fernet.decrypt(encrypted_content)
+            
+            response = HttpResponse(
+                decrypted_content,
+                content_type=file_obj.mime_type or 'application/octet-stream',
+                headers={'X-Client-Key': file_obj.client_key}
+            )
+            # Don't set Content-Disposition as attachment
+            return response
+            
+        except Exception as e:
+            return Response(
+                {'detail': 'Failed to load preview'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class FileShareViewSet(viewsets.ModelViewSet):
     """

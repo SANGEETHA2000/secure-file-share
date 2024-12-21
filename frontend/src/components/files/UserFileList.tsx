@@ -1,14 +1,15 @@
-// src/components/files/UserFileList.tsx
 import React, { useState } from 'react';
 import { useAppSelector } from '../../hooks/redux.ts';
-import { Trash2, Share2 } from 'lucide-react';
+import { Trash2, Share2, Eye } from 'lucide-react';
 import FileListLayout from '../layout/FileListLayout.tsx';
 import FileDownload from './FileDownload.tsx';
 import ShareModal from './ShareModal.tsx';
+import FilePreview from './FilePreview.tsx';
 
 interface SelectedFile {
     id: string;
     name: string;
+    mimeType: string;
 }
 
 export const UserFileList: React.FC = () => {
@@ -20,6 +21,7 @@ export const UserFileList: React.FC = () => {
         key: 'name' | 'uploaded_at' | 'size';
         direction: 'asc' | 'desc';
     }>({ key: 'uploaded_at', direction: 'desc' });
+    const [previewFile, setPreviewFile] = useState<SelectedFile | null>(null);
 
     const handleSort = (key: 'name' | 'uploaded_at' | 'size') => {
         setSortConfig(current => ({
@@ -31,14 +33,27 @@ export const UserFileList: React.FC = () => {
     const handleShare = (file: any) => {
         setSelectedFile({
             id: file.id,
-            name: file.original_name
+            name: file.original_name,
+            mimeType: file.mime_type
         });
         setIsShareModalOpen(true);
+    };
+
+    const handlePreview = (file: any) => {
+        setPreviewFile({
+            id: file.id,
+            name: file.original_name,
+            mimeType: file.mime_type
+        });
     };
 
     const closeShareModal = () => {
         setIsShareModalOpen(false);
         setSelectedFile(null);
+    };
+
+    const closePreview = () => {
+        setPreviewFile(null);
     };
 
     const filteredAndSortedFiles = files
@@ -55,21 +70,34 @@ export const UserFileList: React.FC = () => {
             return direction * (new Date(a.uploaded_at).getTime() - new Date(b.uploaded_at).getTime());
         });
 
-    const renderFileActions = (file: any) => (
-        <>
-            <FileDownload fileId={file.id} fileName={file.original_name} />
-            <button 
-                className="p-1 hover:bg-gray-100 rounded-full" 
-                title="Share"
-                onClick={() => handleShare(file)}
-            >
-                <Share2 className="h-5 w-5 text-gray-500" />
-            </button>
-            <button className="p-1 hover:bg-gray-100 rounded-full" title="Delete">
-                <Trash2 className="h-5 w-5 text-red-500" />
-            </button>
-        </>
-    );
+    const renderFileActions = (file: any) => {
+        const canPreview = ['application/pdf', 'image/jpeg', 'image/png', 'text/plain'].includes(file.mime_type);
+
+        return (
+            <>
+                {canPreview && (
+                    <button
+                        onClick={() => handlePreview(file)}
+                        className="p-1 hover:bg-gray-100 rounded-full"
+                        title="Preview"
+                    >
+                        <Eye className="h-5 w-5 text-gray-500" />
+                    </button>
+                )}
+                <FileDownload fileId={file.id} fileName={file.original_name} />
+                <button 
+                    className="p-1 hover:bg-gray-100 rounded-full" 
+                    title="Share"
+                    onClick={() => handleShare(file)}
+                >
+                    <Share2 className="h-5 w-5 text-gray-500" />
+                </button>
+                <button className="p-1 hover:bg-gray-100 rounded-full" title="Delete">
+                    <Trash2 className="h-5 w-5 text-red-500" />
+                </button>
+            </>
+        );
+    };
 
     return (
         <>
@@ -93,6 +121,17 @@ export const UserFileList: React.FC = () => {
                     onClose={closeShareModal}
                     fileId={selectedFile.id}
                     fileName={selectedFile.name}
+                />
+            )}
+
+            {/* FilePreview Modal */}
+            {previewFile && (
+                <FilePreview
+                    isOpen={true}
+                    onClose={closePreview}
+                    fileId={previewFile.id}
+                    fileName={previewFile.name}
+                    mimeType={previewFile.mimeType}
                 />
             )}
         </>

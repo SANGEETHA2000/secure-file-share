@@ -24,11 +24,11 @@ def generate_secure_password(length=12):
 class FileSerializer(serializers.ModelSerializer):
     file = serializers.FileField(write_only=True)
     owner_name = serializers.SerializerMethodField()
-
+    share_permission = serializers.SerializerMethodField()
     class Meta:
         model = File
         fields = ('id', 'name', 'original_name', 'mime_type', 'size', 
-                 'owner', 'uploaded_at', 'file', 'owner_name')
+                 'owner', 'uploaded_at', 'file', 'owner_name', 'share_permission')
         read_only_fields = ('id', 'name', 'size', 'owner', 'uploaded_at')
 
     def create(self, validated_data):
@@ -48,6 +48,26 @@ class FileSerializer(serializers.ModelSerializer):
 
     def get_owner_name(self, obj):
         return f"{obj.owner.first_name} {obj.owner.last_name}"
+    
+    def get_share_permission(self, obj):
+        # Get the current user from the context
+        request = self.context.get('request')
+        if not request or not request.user:
+            return None
+
+        user = request.user
+        
+        # If user is the owner, they have full permissions
+        if user.is_admin() or obj.owner == user:
+            return 'DOWNLOAD'
+            
+        # Check if there's an active share for this user
+        share = obj.shares.filter(
+            shared_with=user,
+            expires_at__gt=timezone.now()
+        ).first()
+        
+        return share.permission if share else None
 
 class FileShareSerializer(serializers.ModelSerializer):
     shared_with_email = serializers.EmailField(write_only=True)
