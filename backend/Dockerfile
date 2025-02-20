@@ -21,11 +21,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project files
 COPY . .
 
-# Create an entrypoint script that handles migrations and starts the server
-RUN echo '#!/bin/sh\n\
+# Create an entrypoint script
+RUN echo '#!/bin/bash\n\
 python manage.py migrate --no-input\n\
 gunicorn core.wsgi:application --bind 0.0.0.0:$PORT\n'\
 > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
 
-# Use the entrypoint script as the container's command
-CMD ["/app/entrypoint.sh"]
+# Use the entrypoint script
+CMD ["/bin/bash", "/app/entrypoint.sh"]

@@ -169,9 +169,9 @@ AUTH_USER_MODEL = 'users.User'
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",\
-    "https://fortifile-frontend.onrender.com/api/v1"
+    "https://fortifile-frontend.onrender.com"
 ] if DEBUG else [
-    "https://fortifile-frontend.onrender.com/api/v1"
+    "https://fortifile-frontend.onrender.com"
 ]
 
 CORS_ALLOW_CREDENTIALS = True
