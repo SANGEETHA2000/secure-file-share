@@ -13,6 +13,9 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,26 +25,27 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-w39n5*+gks)7v!9nzrpv9t2t)#_g!1#tm9bt%a()dfyear56-$'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True #os.environ.get('DJANGO_ENV', 'development') == 'development'
+DEBUG = os.getenv('DJANGO_ENV', 'development') == 'development'
 
 if DEBUG:
-    # Development settings
+    ALLOWED_HOSTS = ['localhost', '0.0.0.0', '127.0.0.1']
     SECURE_SSL_REDIRECT = False
     SESSION_COOKIE_SECURE = False
-    CSRF_COOKIE_SECURE = False   
-    ALLOWED_HOSTS = ['localhost', '0.0.0.0', '127.0.0.1']
+    CSRF_COOKIE_SECURE = False
 else:
-    # Production settings
+    ALLOWED_HOSTS = [
+        'your-render-backend-url.onrender.com',
+        '.onrender.com'  # Allows all Render subdomains
+    ]
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-    ALLOWED_HOSTS = ['production-domain.com']
 
 # Cache settings for rate limiting
 CACHES = {
@@ -164,9 +168,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'users.User'
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://0.0.0.0:3000",
+    "http://localhost:3000",\
+    "https://your-render-frontend-url.onrender.com"
+] if DEBUG else [
+    "https://your-render-frontend-url.onrender.com"
 ]
 
 CORS_ALLOW_CREDENTIALS = True
