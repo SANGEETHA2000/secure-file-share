@@ -6,7 +6,7 @@ from django.views.generic import RedirectView  # Add this import
 
 urlpatterns = [
     # Redirect root URL to admin or api
-    path('', RedirectView.as_view(url='/api/v1/', permanent=False)),
+    # path('', RedirectView.as_view(url='/api/v1/', permanent=False)),
     
     path('admin/', admin.site.urls),
     path('api/v1/', include([

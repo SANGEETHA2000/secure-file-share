@@ -25,7 +25,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: REACT_APP_API_URL_PROD
-        value: https://securefile-backend.onrender.com/api/v1
+        value: https://fortifile-backend.onrender.com/api/v1
 
 databases:
   - name: securefile-db

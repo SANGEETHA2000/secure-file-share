@@ -37,7 +37,7 @@ if DEBUG:
     CSRF_COOKIE_SECURE = False
 else:
     ALLOWED_HOSTS = [
-        'your-render-backend-url.onrender.com',
+        'https://fortifile-backend.onrender.com/api/v1',
         '.onrender.com'  # Allows all Render subdomains
     ]
     SECURE_SSL_REDIRECT = True
@@ -169,9 +169,9 @@ AUTH_USER_MODEL = 'users.User'
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",\
-    "https://your-render-frontend-url.onrender.com"
+    "https://fortifile-frontend.onrender.com/api/v1"
 ] if DEBUG else [
-    "https://your-render-frontend-url.onrender.com"
+    "https://fortifile-frontend.onrender.com/api/v1"
 ]
 
 CORS_ALLOW_CREDENTIALS = True
